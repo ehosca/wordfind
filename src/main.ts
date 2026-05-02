@@ -1,0 +1,297 @@
+import { LANGUAGES, pickPool, type LanguagePack } from './words';
+import { generatePuzzle, type Placement, type Puzzle } from './grid';
+
+const TARGET_WORD_COUNT = 8;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+const $grid = document.getElementById('grid') as HTMLDivElement;
+const $lines = document.getElementById('lines') as unknown as SVGSVGElement;
+const $list = document.getElementById('wordlist') as HTMLUListElement;
+const $lang = document.getElementById('lang') as HTMLSelectElement;
+const $size = document.getElementById('size') as HTMLSelectElement;
+const $newgame = document.getElementById('newgame') as HTMLButtonElement;
+const $status = document.getElementById('status') as HTMLDivElement;
+
+type Cell = [number, number];
+
+interface State {
+  puzzle: Puzzle;
+  cellEls: HTMLDivElement[][];
+  found: Set<string>;
+  foundGroups: Array<{ cells: Cell[]; group: SVGGElement }>;
+  remaining: Placement[];
+  startCell: Cell | null;
+  selecting: Cell[] | null;
+  selectGroup: SVGGElement | null;
+}
+
+let state: State | null = null;
+
+// ---------- setup ----------
+
+function populateLanguages() {
+  for (const lang of LANGUAGES) {
+    const opt = document.createElement('option');
+    opt.value = lang.code;
+    opt.textContent = lang.label;
+    $lang.appendChild(opt);
+  }
+}
+
+function newGame() {
+  const lang = LANGUAGES.find(l => l.code === $lang.value) ?? LANGUAGES[0]!;
+  const size = parseInt($size.value, 10);
+  const { theme, words } = pickPool(lang);
+
+  const candidates = words.filter(w => Array.from(w).length <= size);
+  shuffle(candidates);
+  const chosen = candidates.slice(0, TARGET_WORD_COUNT);
+
+  const puzzle = generatePuzzle(size, chosen, lang.alphabet);
+  renderBoard(puzzle, lang, theme);
+}
+
+function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
+  $grid.style.gridTemplateColumns = `repeat(${puzzle.size}, 1fr)`;
+  $grid.style.gridTemplateRows = `repeat(${puzzle.size}, 1fr)`;
+  $grid.innerHTML = '';
+  $lines.innerHTML = '';
+  const cellEls: HTMLDivElement[][] = [];
+  for (let r = 0; r < puzzle.size; r++) {
+    cellEls[r] = [];
+    for (let c = 0; c < puzzle.size; c++) {
+      const el = document.createElement('div');
+      el.className = 'cell';
+      el.dataset.row = String(r);
+      el.dataset.col = String(c);
+      el.textContent = puzzle.cells[r]![c]!;
+      $grid.appendChild(el);
+      cellEls[r]![c] = el;
+    }
+  }
+
+  $list.innerHTML = '';
+  for (const p of puzzle.placements) {
+    const li = document.createElement('li');
+    li.dataset.word = p.word;
+    li.textContent = p.word;
+    $list.appendChild(li);
+  }
+
+  $status.classList.remove('win');
+  $status.textContent = `${lang.label} · ${theme} · ${puzzle.placements.length} words`;
+
+  state = {
+    puzzle,
+    cellEls,
+    found: new Set(),
+    foundGroups: [],
+    remaining: [...puzzle.placements],
+    startCell: null,
+    selecting: null,
+    selectGroup: null
+  };
+}
+
+function shuffle<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j]!, arr[i]!];
+  }
+}
+
+// ---------- geometry ----------
+
+function eq(a: Cell, b: Cell): boolean { return a[0] === b[0] && a[1] === b[1]; }
+
+function cellAt(x: number, y: number): Cell | null {
+  const el = document.elementFromPoint(x, y) as HTMLElement | null;
+  if (!el || !el.classList.contains('cell')) return null;
+  return [parseInt(el.dataset.row!, 10), parseInt(el.dataset.col!, 10)];
+}
+
+// Straight-line cells from a to b. Returns null unless the vector is
+// horizontal, vertical, or 45° diagonal.
+function lineCells(a: Cell, b: Cell): Cell[] | null {
+  const dr = b[0] - a[0];
+  const dc = b[1] - a[1];
+  if (dr !== 0 && dc !== 0 && Math.abs(dr) !== Math.abs(dc)) return null;
+  const steps = Math.max(Math.abs(dr), Math.abs(dc));
+  const sr = Math.sign(dr);
+  const sc = Math.sign(dc);
+  const out: Cell[] = [];
+  for (let i = 0; i <= steps; i++) out.push([a[0] + sr * i, a[1] + sc * i]);
+  return out;
+}
+
+function cellCenter(r: number, c: number): { x: number; y: number } {
+  const cell = state!.cellEls[r]![c]!.getBoundingClientRect();
+  const svg = $lines.getBoundingClientRect();
+  return {
+    x: cell.left + cell.width / 2 - svg.left,
+    y: cell.top + cell.height / 2 - svg.top
+  };
+}
+
+function dotRadius(): number {
+  if (!state) return 16;
+  return state.cellEls[0]![0]!.getBoundingClientRect().width * 0.42;
+}
+
+// ---------- rendering ----------
+
+function buildPathGroup(cells: Cell[], variant: 'selecting' | 'found'): SVGGElement {
+  const g = document.createElementNS(SVG_NS, 'g') as SVGGElement;
+  g.setAttribute('class', variant);
+  const r = dotRadius();
+  const lineWidth = r * 0.7;
+  // Connectors first so dots paint over the joins.
+  for (let i = 0; i + 1 < cells.length; i++) {
+    const a = cellCenter(cells[i]![0], cells[i]![1]);
+    const b = cellCenter(cells[i + 1]![0], cells[i + 1]![1]);
+    const line = document.createElementNS(SVG_NS, 'line');
+    line.setAttribute('x1', String(a.x));
+    line.setAttribute('y1', String(a.y));
+    line.setAttribute('x2', String(b.x));
+    line.setAttribute('y2', String(b.y));
+    line.setAttribute('stroke-width', String(lineWidth));
+    g.appendChild(line);
+  }
+  for (const [cr, cc] of cells) {
+    const p = cellCenter(cr, cc);
+    const dot = document.createElementNS(SVG_NS, 'circle');
+    dot.setAttribute('cx', String(p.x));
+    dot.setAttribute('cy', String(p.y));
+    dot.setAttribute('r', String(r));
+    g.appendChild(dot);
+  }
+  return g;
+}
+
+function paintSelection(cells: Cell[]) {
+  if (!state) return;
+  if (state.selectGroup) state.selectGroup.remove();
+  state.selectGroup = null;
+  if (cells.length === 0) return;
+  const g = buildPathGroup(cells, 'selecting');
+  $lines.appendChild(g);
+  state.selectGroup = g;
+}
+
+function redrawLines() {
+  if (!state) return;
+  for (const fg of state.foundGroups) {
+    fg.group.remove();
+    fg.group = buildPathGroup(fg.cells, 'found');
+    $lines.appendChild(fg.group);
+  }
+  if (state.selecting) paintSelection(state.selecting);
+}
+
+// ---------- match logic ----------
+
+function readPath(cells: Cell[]): string {
+  return cells.map(([r, c]) => state!.puzzle.cells[r]![c]!).join('');
+}
+
+function pathMatchesPlacement(path: Cell[], p: Placement): boolean {
+  if (path.length !== p.cells.length) return false;
+  let fwd = true, rev = true;
+  for (let i = 0; i < path.length; i++) {
+    if (!eq(path[i]!, p.cells[i]!)) fwd = false;
+    if (!eq(path[i]!, p.cells[p.cells.length - 1 - i]!)) rev = false;
+    if (!fwd && !rev) return false;
+  }
+  return fwd || rev;
+}
+
+function trySubmit(cells: Cell[]) {
+  if (!state || cells.length < 2) return;
+  let match: Placement | undefined;
+  for (const p of state.remaining) {
+    if (pathMatchesPlacement(cells, p)) { match = p; break; }
+  }
+  if (!match) {
+    const fwd = readPath(cells);
+    const rev = readPath([...cells].reverse());
+    for (const p of state.remaining) {
+      if (p.word === fwd || p.word === rev) { match = p; break; }
+    }
+  }
+  if (!match) return;
+
+  state.found.add(match.word);
+  state.remaining = state.remaining.filter(p => p !== match);
+
+  const persisted: Cell[] = [...cells];
+  const g = buildPathGroup(persisted, 'found');
+  $lines.appendChild(g);
+  state.foundGroups.push({ cells: persisted, group: g });
+
+  for (const [r, c] of persisted) {
+    const el = state.cellEls[r]![c]!;
+    el.classList.add('flash', 'in-found');
+    setTimeout(() => el.classList.remove('flash'), 360);
+  }
+  const li = $list.querySelector(`li[data-word="${match.word}"]`);
+  if (li) li.classList.add('found');
+
+  if (state.remaining.length === 0) {
+    $status.textContent = '✦ All words found ✦';
+    $status.classList.add('win');
+  }
+}
+
+// ---------- pointer handlers ----------
+
+function attachPointerHandlers() {
+  $grid.addEventListener('pointerdown', onPointerDown);
+  $grid.addEventListener('pointermove', onPointerMove);
+  $grid.addEventListener('pointerup', onPointerUp);
+  $grid.addEventListener('pointercancel', onPointerUp);
+}
+
+function onPointerDown(e: PointerEvent) {
+  if (!state) return;
+  const cell = cellAt(e.clientX, e.clientY);
+  if (!cell) return;
+  state.startCell = cell;
+  state.selecting = [cell];
+  paintSelection(state.selecting);
+  (e.target as Element).setPointerCapture?.(e.pointerId);
+  e.preventDefault();
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (!state || !state.startCell) return;
+  const cell = cellAt(e.clientX, e.clientY);
+  if (!cell) return;
+  const line = lineCells(state.startCell, cell);
+  if (!line) return;
+  state.selecting = line;
+  paintSelection(line);
+}
+
+function onPointerUp(_e: PointerEvent) {
+  if (!state) return;
+  const sel = state.selecting;
+  state.selecting = null;
+  state.startCell = null;
+  if (sel && sel.length > 1) {
+    trySubmit(sel);
+  }
+  if (state.selectGroup) {
+    state.selectGroup.remove();
+    state.selectGroup = null;
+  }
+}
+
+// ---------- boot ----------
+
+populateLanguages();
+attachPointerHandlers();
+window.addEventListener('resize', redrawLines);
+$newgame.addEventListener('click', newGame);
+$lang.addEventListener('change', newGame);
+$size.addEventListener('change', newGame);
+newGame();

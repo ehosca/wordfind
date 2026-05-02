@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#f6f4ee" />
+    <title>Wordfind</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <h1>WORD<span class="accent">FIND</span></h1>
+        <div class="controls">
+          <label class="control">
+            <span>Language</span>
+            <select id="lang"></select>
+          </label>
+          <label class="control">
+            <span>Size</span>
+            <select id="size">
+              <option value="10">10</option>
+              <option value="12" selected>12</option>
+              <option value="14">14</option>
+              <option value="16">16</option>
+            </select>
+          </label>
+          <button id="newgame">New Game</button>
+        </div>
+      </header>
+      <main class="play">
+        <aside class="words">
+          <h2>Find</h2>
+          <ul id="wordlist"></ul>
+          <div id="status" class="status"></div>
+        </aside>
+        <div class="board">
+          <div id="grid" class="grid"></div>
+          <svg id="lines" class="lines" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
