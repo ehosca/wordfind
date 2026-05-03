@@ -108,8 +108,11 @@ function shuffle<T>(arr: T[]): void {
 function eq(a: Cell, b: Cell): boolean { return a[0] === b[0] && a[1] === b[1]; }
 
 function cellAt(x: number, y: number): Cell | null {
-  const el = document.elementFromPoint(x, y) as HTMLElement | null;
-  if (!el || !el.classList.contains('cell')) return null;
+  const hit = document.elementFromPoint(x, y) as HTMLElement | null;
+  // Pointer may land on the inner glyph span, not the cell — walk up to
+  // the nearest .cell ancestor.
+  const el = hit?.closest('.cell') as HTMLElement | null;
+  if (!el) return null;
   return [parseInt(el.dataset.row!, 10), parseInt(el.dataset.col!, 10)];
 }
 
