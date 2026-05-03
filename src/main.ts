@@ -289,6 +289,8 @@ function onPointerUp(_e: PointerEvent) {
 // ---------- boot ----------
 
 populateLanguages();
+// Default to a 10-grid on phones; 12 looks cramped under ~720px.
+if (window.matchMedia('(max-width: 720px)').matches) $size.value = '10';
 attachPointerHandlers();
 window.addEventListener('resize', redrawLines);
 $newgame.addEventListener('click', newGame);
