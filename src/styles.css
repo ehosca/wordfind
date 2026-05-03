@@ -5,9 +5,9 @@
   --text: #1f1d1a;
   --text-dim: #7a766d;
   --accent: #2f6fd6;
-  --accent-2: #5a5854;
-  --found: #5a5854;
-  --select: rgba(47, 111, 214, 0.28);
+  --accent-hover: #2560b8;
+  --select-dot: #d4d2cb;
+  --radius: 12px;
 }
 
 * { box-sizing: border-box; }
@@ -18,7 +18,8 @@ html, body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: "Inter", "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  font-family: "Inter", "Segoe UI Variable Text", "Segoe UI", -apple-system,
+    BlinkMacSystemFont, system-ui, Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
   user-select: none;
@@ -32,75 +33,111 @@ html, body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  padding-top: max(16px, env(safe-area-inset-top));
-  padding-right: max(16px, env(safe-area-inset-right));
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
-  padding-left: max(16px, env(safe-area-inset-left));
-  gap: 16px;
+  padding: 24px;
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-right: max(24px, env(safe-area-inset-right));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  padding-left: max(24px, env(safe-area-inset-left));
+  gap: 24px;
 }
+
+/* ── Header ───────────────────────────────────────────── */
 
 .topbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 4px;
 }
 
 .topbar h1 {
   margin: 0;
-  font-size: 22px;
-  letter-spacing: 4px;
+  font-size: 32px;
+  letter-spacing: 6px;
   font-weight: 700;
 }
 
 .accent { color: var(--accent); }
 
+.tagline {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 1.5px;
+}
+
 .controls {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
+  justify-content: center;
+  margin-top: 10px;
 }
 
 .control {
   display: flex;
   flex-direction: column;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
+  font-weight: 500;
 }
 
-select, button {
+select {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--grid-line);
-  padding: 8px 12px;
+  padding: 8px 14px;
   font: inherit;
   font-size: 14px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   margin-top: 4px;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+
+select:hover { border-color: #ccc; }
+
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 111, 214, 0.12);
 }
 
 button {
-  margin-top: 18px;
   background: var(--accent);
   color: #ffffff;
   border: none;
+  font: inherit;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
+  padding: 10px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms, transform 100ms, box-shadow 150ms;
+  box-shadow: 0 2px 8px rgba(47, 111, 214, 0.25);
 }
 
-button:hover { filter: brightness(1.1); }
+button:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 4px 14px rgba(47, 111, 214, 0.3);
+}
+
+button:active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 4px rgba(47, 111, 214, 0.2);
+}
+
+/* ── Play area ────────────────────────────────────────── */
 
 .play {
   display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 20px;
+  grid-template-columns: 200px 1fr;
+  gap: 24px;
   flex: 1;
   min-height: 0;
 }
@@ -112,8 +149,9 @@ button:hover { filter: brightness(1.1); }
   margin: 0 auto;
   aspect-ratio: 1;
   background: var(--panel);
-  border-radius: 10px;
+  border-radius: var(--radius);
   padding: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
 }
 
 .grid {
@@ -136,53 +174,38 @@ button:hover { filter: brightness(1.1); }
   z-index: 1;
 }
 
-.lines line {
-  stroke-linecap: round;
-}
+.lines line { stroke-linecap: round; }
 
-.lines .selecting line   { stroke: #d4d2cb; }
-.lines .selecting circle { stroke: #d4d2cb; fill: #d4d2cb; }
-.lines .found line       { stroke: var(--found); }
-.lines .found circle     { stroke: var(--found); fill: var(--found); }
+.lines .selecting line   { stroke: var(--select-dot); }
+.lines .selecting circle { stroke: var(--select-dot); fill: var(--select-dot); }
+/* .found colours are set inline per-group from JS */
 
-.cell {
-  position: relative;
-  z-index: 3;
-}
-
-.cell.in-found {
-  color: #ffffff;
-}
+/* ── Cells ────────────────────────────────────────────── */
 
 .cell {
   display: grid;
   place-items: center;
-  font-family: "Inter", "Segoe UI Variable Display", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: "Inter", "Segoe UI Variable Display", "Segoe UI", -apple-system,
+    BlinkMacSystemFont, system-ui, sans-serif;
   font-weight: 500;
   font-size: clamp(14px, 2.7vw, 26px);
   line-height: 1;
   letter-spacing: 0.04em;
   color: var(--text);
   border-radius: 4px;
-  transition: color 80ms, transform 120ms;
+  transition: color 120ms, transform 120ms;
   cursor: pointer;
   position: relative;
+  z-index: 3;
   font-feature-settings: "kern" 1, "ss01" 1, "cv11" 1;
 }
 
-/* The glyph span gets shifted to the visual center of its cell. The
-   cell's bounding rect stays put, so SVG dot positions remain accurate.
-   `1cap` (cap-height unit) is the height of an uppercase letter — by
-   sizing the span to exactly that, we eliminate the line-box descender
-   space that biases letter position. */
 .cell .glyph {
   display: inline-block;
   height: 1cap;
   line-height: 1cap;
 }
 
-/* Fallback for engines without `1cap` unit support: shift up by an
-   approximate descender offset. */
 @supports not (height: 1cap) {
   .cell .glyph {
     height: auto;
@@ -191,31 +214,37 @@ button:hover { filter: brightness(1.1); }
   }
 }
 
+.cell.in-found { color: #ffffff; }
+
 .cell.flash {
-  animation: flash 350ms ease-out;
+  animation: flash 400ms ease-out;
 }
 
 @keyframes flash {
-  0%   { transform: scale(1.2); color: #fff; }
-  100% { transform: scale(1); color: var(--text); }
+  0%   { transform: scale(1.25); }
+  100% { transform: scale(1); }
 }
+
+/* ── Word list ────────────────────────────────────────── */
 
 .words {
   background: var(--panel);
   border: 1px solid var(--grid-line);
-  border-radius: 10px;
-  padding: 16px;
+  border-radius: var(--radius);
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
 }
 
 .words h2 {
-  margin: 0 0 4px;
-  font-size: 12px;
-  letter-spacing: 2px;
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 2.5px;
   color: var(--text-dim);
   text-transform: uppercase;
+  font-weight: 600;
 }
 
 #wordlist {
@@ -224,73 +253,155 @@ button:hover { filter: brightness(1.1); }
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   font-size: 15px;
 }
 
 #wordlist li {
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: opacity 350ms ease, color 350ms ease;
+  font-weight: 500;
+}
+
+#wordlist li .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--grid-line);
+  flex-shrink: 0;
+  transition: background 350ms ease, border-color 350ms ease, transform 350ms ease;
 }
 
 #wordlist li.found {
-  color: var(--found);
-  text-decoration: line-through;
-  opacity: 0.7;
+  opacity: 0.5;
 }
+
+#wordlist li.found .word-text {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--text-dim);
+}
+
+#wordlist li.found .dot {
+  transform: scale(1.15);
+}
+
+/* ── Status / win ─────────────────────────────────────── */
 
 .status {
   margin-top: auto;
-  font-size: 12px;
+  padding-top: 10px;
+  font-size: 11px;
   color: var(--text-dim);
   letter-spacing: 1px;
 }
 
 .status.win {
-  color: var(--accent-2);
-  font-weight: 600;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  animation: bounceIn 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+@keyframes bounceIn {
+  0%   { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.board.celebrating {
+  animation: board-glow 1s ease;
+}
+
+@keyframes board-glow {
+  0%   { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03); }
+  50%  { box-shadow: 0 0 30px rgba(47, 111, 214, 0.15), 0 0 60px rgba(47, 111, 214, 0.06); }
+  100% { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03); }
+}
+
+/* ── Footer ───────────────────────────────────────────── */
+
+.footer {
+  text-align: center;
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.footer a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid var(--grid-line);
+  padding-bottom: 1px;
+  transition: color 150ms, border-color 150ms;
+}
+
+.footer a:hover {
+  color: var(--text);
+  border-bottom-color: currentColor;
+}
+
+/* ── Mobile ───────────────────────────────────────────── */
+
 @media (max-width: 720px) {
-  #app { padding: 10px; gap: 10px; }
+  #app { padding: 12px; gap: 12px; }
+
+  .topbar h1 { font-size: 24px; letter-spacing: 4px; }
+  .tagline { font-size: 11px; letter-spacing: 1px; }
 
   .play {
     grid-template-columns: 1fr;
     grid-auto-rows: min-content;
     align-content: start;
-    gap: 10px;
+    gap: 12px;
   }
 
-  /* Grid first on mobile, then the word list. */
   .play .board { order: 1; }
   .play .words { order: 2; }
 
-  .topbar h1 { font-size: 18px; letter-spacing: 3px; }
-
-  /* Compact wrapping pill list instead of a tall column. */
   .words {
     padding: 10px 12px;
     gap: 6px;
   }
   .words h2 { display: none; }
+
   #wordlist {
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 4px 6px;
+    gap: 6px;
     font-size: 13px;
   }
   #wordlist li {
-    padding: 4px 10px;
+    padding: 5px 12px;
     border: 1px solid var(--grid-line);
     border-radius: 999px;
+    gap: 6px;
   }
+  #wordlist li .dot {
+    width: 6px;
+    height: 6px;
+    border-width: 1.5px;
+  }
+  #wordlist li.found {
+    border-color: transparent;
+    background: var(--found-tint, transparent);
+  }
+
   .status { display: none; }
 
   .board {
     max-width: 100%;
     padding: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.03);
   }
   .lines { inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); }
 
   .cell { font-size: clamp(14px, 5vw, 22px); }
+
+  .footer { padding: 2px 0; }
 }

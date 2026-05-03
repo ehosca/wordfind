@@ -4,6 +4,18 @@ import { generatePuzzle, type Placement, type Puzzle } from './grid';
 const TARGET_WORD_COUNT = 8;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+// Soft, muted palette — each found word gets the next colour.
+const FOUND_COLORS = [
+  '#7EA886', // sage
+  '#C2785C', // terracotta
+  '#6B8DB5', // dusty blue
+  '#C4A24E', // amber
+  '#9B7BAA', // plum
+  '#5B9E94', // teal
+  '#D4826A', // coral
+  '#8B8DB5', // lavender
+];
+
 const $grid = document.getElementById('grid') as HTMLDivElement;
 const $lines = document.getElementById('lines') as unknown as SVGSVGElement;
 const $list = document.getElementById('wordlist') as HTMLUListElement;
@@ -11,6 +23,7 @@ const $lang = document.getElementById('lang') as HTMLSelectElement;
 const $size = document.getElementById('size') as HTMLSelectElement;
 const $newgame = document.getElementById('newgame') as HTMLButtonElement;
 const $status = document.getElementById('status') as HTMLDivElement;
+const $board = document.querySelector('.board') as HTMLDivElement;
 
 type Cell = [number, number];
 
@@ -18,11 +31,12 @@ interface State {
   puzzle: Puzzle;
   cellEls: HTMLDivElement[][];
   found: Set<string>;
-  foundGroups: Array<{ cells: Cell[]; group: SVGGElement }>;
+  foundGroups: Array<{ cells: Cell[]; group: SVGGElement; color: string }>;
   remaining: Placement[];
   startCell: Cell | null;
   selecting: Cell[] | null;
   selectGroup: SVGGElement | null;
+  colorIndex: number;
 }
 
 let state: State | null = null;
@@ -56,6 +70,8 @@ function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
   $grid.style.gridTemplateRows = `repeat(${puzzle.size}, 1fr)`;
   $grid.innerHTML = '';
   $lines.innerHTML = '';
+  $board.classList.remove('celebrating');
+
   const cellEls: HTMLDivElement[][] = [];
   for (let r = 0; r < puzzle.size; r++) {
     cellEls[r] = [];
@@ -73,11 +89,21 @@ function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
     }
   }
 
+  // Build word list with dot indicators.
   $list.innerHTML = '';
   for (const p of puzzle.placements) {
     const li = document.createElement('li');
     li.dataset.word = p.word;
-    li.textContent = p.word;
+
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    li.appendChild(dot);
+
+    const wordText = document.createElement('span');
+    wordText.className = 'word-text';
+    wordText.textContent = p.word;
+    li.appendChild(wordText);
+
     $list.appendChild(li);
   }
 
@@ -92,7 +118,8 @@ function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
     remaining: [...puzzle.placements],
     startCell: null,
     selecting: null,
-    selectGroup: null
+    selectGroup: null,
+    colorIndex: 0
   };
 }
 
@@ -109,8 +136,7 @@ function eq(a: Cell, b: Cell): boolean { return a[0] === b[0] && a[1] === b[1]; 
 
 function cellAt(x: number, y: number): Cell | null {
   const hit = document.elementFromPoint(x, y) as HTMLElement | null;
-  // Pointer may land on the inner glyph span, not the cell — walk up to
-  // the nearest .cell ancestor.
+  // Pointer may land on the inner glyph span — walk up to the .cell.
   const el = hit?.closest('.cell') as HTMLElement | null;
   if (!el) return null;
   return [parseInt(el.dataset.row!, 10), parseInt(el.dataset.col!, 10)];
@@ -146,11 +172,16 @@ function dotRadius(): number {
 
 // ---------- rendering ----------
 
-function buildPathGroup(cells: Cell[], variant: 'selecting' | 'found'): SVGGElement {
+function buildPathGroup(
+  cells: Cell[],
+  variant: 'selecting' | 'found',
+  color?: string
+): SVGGElement {
   const g = document.createElementNS(SVG_NS, 'g') as SVGGElement;
   g.setAttribute('class', variant);
   const r = dotRadius();
   const lineWidth = r * 0.7;
+
   // Connectors first so dots paint over the joins.
   for (let i = 0; i + 1 < cells.length; i++) {
     const a = cellCenter(cells[i]![0], cells[i]![1]);
@@ -161,16 +192,23 @@ function buildPathGroup(cells: Cell[], variant: 'selecting' | 'found'): SVGGElem
     line.setAttribute('x2', String(b.x));
     line.setAttribute('y2', String(b.y));
     line.setAttribute('stroke-width', String(lineWidth));
+    if (color) line.style.stroke = color;
     g.appendChild(line);
   }
+
   for (const [cr, cc] of cells) {
     const p = cellCenter(cr, cc);
     const dot = document.createElementNS(SVG_NS, 'circle');
     dot.setAttribute('cx', String(p.x));
     dot.setAttribute('cy', String(p.y));
     dot.setAttribute('r', String(r));
+    if (color) {
+      dot.style.stroke = color;
+      dot.style.fill = color;
+    }
     g.appendChild(dot);
   }
+
   return g;
 }
 
@@ -188,7 +226,7 @@ function redrawLines() {
   if (!state) return;
   for (const fg of state.foundGroups) {
     fg.group.remove();
-    fg.group = buildPathGroup(fg.cells, 'found');
+    fg.group = buildPathGroup(fg.cells, 'found', fg.color);
     $lines.appendChild(fg.group);
   }
   if (state.selecting) paintSelection(state.selecting);
@@ -211,6 +249,13 @@ function pathMatchesPlacement(path: Cell[], p: Placement): boolean {
   return fwd || rev;
 }
 
+function nextColor(): string {
+  if (!state) return FOUND_COLORS[0]!;
+  const c = FOUND_COLORS[state.colorIndex % FOUND_COLORS.length]!;
+  state.colorIndex++;
+  return c;
+}
+
 function trySubmit(cells: Cell[]) {
   if (!state || cells.length < 2) return;
   let match: Placement | undefined;
@@ -229,22 +274,38 @@ function trySubmit(cells: Cell[]) {
   state.found.add(match.word);
   state.remaining = state.remaining.filter(p => p !== match);
 
+  // Pick the next colour from the palette.
+  const color = nextColor();
+
   const persisted: Cell[] = [...cells];
-  const g = buildPathGroup(persisted, 'found');
+  const g = buildPathGroup(persisted, 'found', color);
   $lines.appendChild(g);
-  state.foundGroups.push({ cells: persisted, group: g });
+  state.foundGroups.push({ cells: persisted, group: g, color });
 
   for (const [r, c] of persisted) {
     const el = state.cellEls[r]![c]!;
     el.classList.add('flash', 'in-found');
-    setTimeout(() => el.classList.remove('flash'), 360);
+    setTimeout(() => el.classList.remove('flash'), 400);
   }
-  const li = $list.querySelector(`li[data-word="${match.word}"]`);
-  if (li) li.classList.add('found');
 
+  // Mark the word in the sidebar/pill list.
+  const li = $list.querySelector(`li[data-word="${match.word}"]`);
+  if (li) {
+    li.classList.add('found');
+    const dot = li.querySelector('.dot') as HTMLElement | null;
+    if (dot) {
+      dot.style.backgroundColor = color;
+      dot.style.borderColor = color;
+    }
+    // Light tint for mobile pill background.
+    (li as HTMLElement).style.setProperty('--found-tint', color + '20');
+  }
+
+  // Win!
   if (state.remaining.length === 0) {
-    $status.textContent = '✦ All words found ✦';
+    $status.textContent = 'All words found!';
     $status.classList.add('win');
+    $board.classList.add('celebrating');
   }
 }
 
