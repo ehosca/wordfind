@@ -66,6 +66,15 @@ html, body {
   letter-spacing: 1.5px;
 }
 
+.timer {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
 .controls {
   display: flex;
   gap: 12px;
@@ -353,6 +362,7 @@ button:active {
 
   .topbar h1 { font-size: 24px; letter-spacing: 4px; }
   .tagline { font-size: 11px; letter-spacing: 1px; }
+  .timer { font-size: 18px; }
 
   .play {
     grid-template-columns: 1fr;

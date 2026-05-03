@@ -16,6 +16,7 @@ const FOUND_COLORS = [
   '#8B8DB5', // lavender
 ];
 
+const $timer = document.getElementById('timer') as HTMLDivElement;
 const $grid = document.getElementById('grid') as HTMLDivElement;
 const $lines = document.getElementById('lines') as unknown as SVGSVGElement;
 const $list = document.getElementById('wordlist') as HTMLUListElement;
@@ -40,6 +41,41 @@ interface State {
 }
 
 let state: State | null = null;
+
+// ---------- timer ----------
+
+let timerStart = 0;
+let timerInterval: ReturnType<typeof setInterval> | null = null;
+let timerRunning = false;
+
+function formatTime(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
+function startTimer() {
+  stopTimer();
+  timerStart = Date.now();
+  timerRunning = true;
+  $timer.textContent = '0:00';
+  timerInterval = setInterval(() => {
+    if (!timerRunning) return;
+    $timer.textContent = formatTime(Date.now() - timerStart);
+  }, 250);
+}
+
+function stopTimer(): string {
+  timerRunning = false;
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  const elapsed = formatTime(Date.now() - timerStart);
+  $timer.textContent = elapsed;
+  return elapsed;
+}
 
 // ---------- setup ----------
 
@@ -109,6 +145,7 @@ function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
 
   $status.classList.remove('win');
   $status.textContent = `${lang.label} · ${theme} · ${puzzle.placements.length} words`;
+  startTimer();
 
   state = {
     puzzle,
@@ -303,7 +340,8 @@ function trySubmit(cells: Cell[]) {
 
   // Win!
   if (state.remaining.length === 0) {
-    $status.textContent = 'All words found!';
+    const elapsed = stopTimer();
+    $status.textContent = `All words found in ${elapsed}!`;
     $status.classList.add('win');
     $board.classList.add('celebrating');
   }
