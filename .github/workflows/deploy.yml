@@ -1,0 +1,74 @@
+name: Deploy to SmarterASP.NET
+
+# Triggers:
+#   release.published — fires when you publish a new GitHub Release (or when
+#                        a draft release transitions to published). The
+#                        checkout will pick up the commit the release was
+#                        cut from (the tag's SHA).
+#   workflow_dispatch — manual "Run workflow" button in the Actions tab.
+#                        Useful for redeploying without cutting a new release
+#                        (e.g. server got wiped, or you need to re-sync after
+#                        editing files directly via FTP).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Prevent two deploys from racing each other to the FTP server. If a deploy
+# is mid-flight when another release publishes, the second one waits.
+# Group is shared with the other game deploys (same FTP account) so we
+# don't have two workflows logged into the same server simultaneously.
+concurrency:
+  group: deploy-smarterasp
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show what we're deploying
+        run: |
+          echo "Trigger:        ${{ github.event_name }}"
+          echo "Release tag:    ${{ github.event.release.tag_name || 'manual' }}"
+          echo "Release name:   ${{ github.event.release.name || 'manual' }}"
+          echo "Commit:         ${{ github.sha }}"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Deploy to SmarterASP.NET (clean slate)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          # FTP user is chrooted to the webroot, so "/wordfind/" here is
+          # hosca.com/wordfind/ — the subpath this game lives under. The
+          # webroot itself (landing page) and sibling games like
+          # /chromafall/ are owned by their own deploys.
+          server-dir: /wordfind/
+          # Clean-slate mode: wipe server-dir contents BEFORE uploading the
+          # new bundle. Scoped to /wordfind/, so it can't touch the root
+          # index.html or sibling games. Guarantees old hashed JS bundles
+          # from prior releases don't accumulate. Cost: every release
+          # transfers the full payload — fine for a static site this small.
+          dangerous-clean-slate: true
+          protocol: ftps
+          # SmarterASP.NET certs sometimes don't validate strictly under
+          # Node's TLS; "loose" accepts the cert but the connection is
+          # still encrypted. Use "strict" if you've confirmed your host's
+          # cert is in the standard trust store.
+          security: loose
