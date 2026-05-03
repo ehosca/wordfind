@@ -64,7 +64,10 @@ function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
       el.className = 'cell';
       el.dataset.row = String(r);
       el.dataset.col = String(c);
-      el.textContent = puzzle.cells[r]![c]!;
+      const glyph = document.createElement('span');
+      glyph.className = 'glyph';
+      glyph.textContent = puzzle.cells[r]![c]!;
+      el.appendChild(glyph);
       $grid.appendChild(el);
       cellEls[r]![c] = el;
     }

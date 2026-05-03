@@ -156,40 +156,39 @@ button:hover { filter: brightness(1.1); }
 }
 
 .cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   font-family: "Inter", "Segoe UI Variable Display", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-weight: 500;
   font-size: clamp(14px, 2.7vw, 26px);
   line-height: 1;
-  /* Fallback compensation for browsers without text-box-trim. The empty
-     descender area at the bottom of the line-box (caps don't use it)
-     makes flex-centered glyphs sit lower than visual center. */
-  padding-bottom: 0.22em;
   letter-spacing: 0.04em;
   color: var(--text);
   border-radius: 4px;
-  transition: background 80ms, color 80ms, transform 120ms;
+  transition: color 80ms, transform 120ms;
   cursor: pointer;
   position: relative;
   font-feature-settings: "kern" 1, "ss01" 1, "cv11" 1;
 }
 
-/* Modern: trim the line-box to the cap-height (top) and baseline
-   (bottom) so the glyph itself is what gets centered, not the asymmetric
-   line-box. Supported in Safari 16.4+ and Chrome 133+. */
-@supports (text-box-trim: trim-both) {
-  .cell {
-    text-box-trim: trim-both;
-    text-box-edge: cap alphabetic;
-    padding-bottom: 0;
-  }
+/* The glyph span gets shifted to the visual center of its cell. The
+   cell's bounding rect stays put, so SVG dot positions remain accurate.
+   `1cap` (cap-height unit) is the height of an uppercase letter — by
+   sizing the span to exactly that, we eliminate the line-box descender
+   space that biases letter position. */
+.cell .glyph {
+  display: inline-block;
+  height: 1cap;
+  line-height: 1cap;
 }
-@supports (text-box: trim-both cap alphabetic) {
-  .cell {
-    text-box: trim-both cap alphabetic;
-    padding-bottom: 0;
+
+/* Fallback for engines without `1cap` unit support: shift up by an
+   approximate descender offset. */
+@supports not (height: 1cap) {
+  .cell .glyph {
+    height: auto;
+    line-height: 1;
+    transform: translateY(-0.11em);
   }
 }
 
