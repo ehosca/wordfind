@@ -145,7 +145,7 @@ button:active {
 
 .play {
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 220px 1fr;
   gap: 24px;
   flex: 1;
   min-height: 0;
@@ -154,7 +154,7 @@ button:active {
 .board {
   position: relative;
   width: 100%;
-  max-width: min(70vh, 100%);
+  max-width: min(70vh, 640px);
   margin: 0 auto;
   aspect-ratio: 1;
   background: var(--panel);
@@ -355,13 +355,32 @@ button:active {
   border-bottom-color: currentColor;
 }
 
-/* ── Mobile ───────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────
+ * Responsive system: three layouts driven by viewport size.
+ *
+ *   Layout A — "Comfortable" (default, defined above)
+ *     Wide AND tall enough for sidebar + board side-by-side.
+ *     Targets: desktop, tablet landscape.
+ *
+ *   Layout B — "Tall" (this @media)
+ *     Narrow OR short. Stack: header → board → word pills → footer.
+ *     Pills scale via clamp() so tablet portrait gets bigger pills
+ *     than phone portrait without separate breakpoints.
+ *     Targets: phone portrait, tablet portrait, narrow desktop.
+ *
+ *   Layout C — "Short landscape" (after this, more specific)
+ *     Height < 500px in landscape — typically phone landscape.
+ *     Single-line header, side-by-side board + compact word column,
+ *     footer hidden to reclaim vertical space.
+ * ──────────────────────────────────────────────────────── */
 
-@media (max-width: 720px) {
-  #app { padding: 12px; gap: 12px; }
+/* ── Layout B — Tall / narrow ─────────────────────────── */
 
-  .topbar h1 { font-size: 24px; letter-spacing: 4px; }
-  .tagline { font-size: 11px; letter-spacing: 1px; }
+@media (max-width: 899px), (max-height: 599px) {
+  #app { padding: 16px; gap: 14px; }
+
+  .topbar h1 { font-size: clamp(22px, 4.5vw, 28px); letter-spacing: 4px; }
+  .tagline { font-size: 12px; letter-spacing: 1px; }
   .timer { font-size: 18px; }
 
   .play {
@@ -374,20 +393,33 @@ button:active {
   .play .board { order: 1; }
   .play .words { order: 2; }
 
+  .board {
+    max-width: min(75vh, 100%);
+    margin: 0 auto;
+    padding: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.03);
+  }
+  .lines { inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); }
+
+  .cell { font-size: clamp(14px, 5vw, 22px); }
+
   .words {
-    padding: 10px 12px;
+    padding: clamp(10px, 1.6vw, 14px) clamp(12px, 2vw, 16px);
     gap: 6px;
   }
   .words h2 { display: none; }
 
+  /* Pills: fluid sizing so tablet portrait gets noticeably larger
+     pills than phone portrait, no extra breakpoint needed. */
   #wordlist {
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 6px;
-    font-size: 13px;
+    justify-content: center;
+    gap: 6px clamp(6px, 1vw, 10px);
+    font-size: clamp(13px, 1.7vw, 15px);
   }
   #wordlist li {
-    padding: 5px 12px;
+    padding: clamp(5px, 0.8vw, 7px) clamp(11px, 1.6vw, 14px);
     border: 1px solid var(--grid-line);
     border-radius: 999px;
     gap: 6px;
@@ -403,15 +435,116 @@ button:active {
   }
 
   .status { display: none; }
-
-  .board {
-    max-width: 100%;
-    padding: 6px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.03);
-  }
-  .lines { inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); }
-
-  .cell { font-size: clamp(14px, 5vw, 22px); }
-
   .footer { padding: 2px 0; }
+}
+
+/* Phone-only refinement: tighten padding/gap on very narrow viewports
+   so the board can claim every available pixel of width. */
+@media (max-width: 480px) {
+  #app { padding: 10px; gap: 10px; }
+  .topbar h1 { font-size: 22px; letter-spacing: 3px; }
+  .tagline { font-size: 11px; }
+}
+
+/* ── Layout C — Short landscape (phone landscape) ─────── */
+
+@media (max-height: 499px) and (orientation: landscape) {
+  #app { padding: 8px; gap: 8px; }
+
+  /* Single-line header: title · timer · controls all inline,
+     no tagline (no room). */
+  .topbar {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  .topbar h1 {
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+  .tagline { display: none; }
+  .timer {
+    font-size: 16px;
+    margin-top: 0;
+    letter-spacing: 1.5px;
+  }
+  .controls {
+    margin-top: 0;
+    gap: 8px;
+  }
+  /* Hide the "LANGUAGE" / "SIZE" labels — selects are self-explanatory
+     given how often the user has seen them. */
+  .control span { display: none; }
+  select {
+    margin-top: 0;
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  button {
+    padding: 6px 14px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    box-shadow: 0 1px 4px rgba(47, 111, 214, 0.2);
+  }
+
+  /* Side-by-side: compact word column + board taking the rest. */
+  .play {
+    grid-template-columns: 130px 1fr;
+    grid-template-rows: 1fr;
+    grid-auto-rows: unset;
+    align-content: stretch;
+    gap: 10px;
+  }
+  .play .board { order: unset; }
+  .play .words { order: unset; }
+
+  .words {
+    padding: 8px 10px;
+    gap: 4px;
+    overflow-y: auto;
+  }
+  .words h2 { display: none; }
+
+  #wordlist {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 1px;
+    font-size: 11px;
+  }
+  #wordlist li {
+    padding: 3px 6px;
+    border: none;
+    background: none;
+    border-radius: 4px;
+    gap: 6px;
+  }
+  #wordlist li .dot {
+    width: 5px;
+    height: 5px;
+    border-width: 1.5px;
+  }
+  #wordlist li.found {
+    background: var(--found-tint, transparent);
+    border: none;
+  }
+
+  .status { display: none; }
+  .footer { display: none; }
+
+  /* Board: square, sized by available height (the binding constraint
+     in landscape) — capped to viewport width if for some reason that's
+     smaller. */
+  .board {
+    width: 100%;
+    height: 100%;
+    max-width: min(85vh, 100%);
+    max-height: 100%;
+    margin: 0;
+    padding: 5px;
+  }
+  .lines { inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); }
+  .cell { font-size: clamp(11px, 2.4vh, 18px); }
 }
