@@ -16,23 +16,6 @@
       <header class="topbar">
         <h1>WORD<span class="accent">FIND</span></h1>
         <p class="tagline">find the hidden words</p>
-        <div id="timer" class="timer">0:00</div>
-        <div class="controls">
-          <label class="control">
-            <span>Language</span>
-            <select id="lang"></select>
-          </label>
-          <label class="control">
-            <span>Size</span>
-            <select id="size">
-              <option value="10">10</option>
-              <option value="12" selected>12</option>
-              <option value="14">14</option>
-              <option value="16">16</option>
-            </select>
-          </label>
-          <button id="newgame">New Game</button>
-        </div>
       </header>
       <main class="play">
         <aside class="words">
@@ -40,9 +23,30 @@
           <ul id="wordlist"></ul>
           <div id="status" class="status"></div>
         </aside>
-        <div class="board">
-          <div id="grid" class="grid"></div>
-          <svg id="lines" class="lines" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="board-stack">
+          <div class="board-toolbar">
+            <div class="controls">
+              <label class="control">
+                <span>Language</span>
+                <select id="lang"></select>
+              </label>
+              <label class="control">
+                <span>Size</span>
+                <select id="size">
+                  <option value="10">10</option>
+                  <option value="12" selected>12</option>
+                  <option value="14">14</option>
+                  <option value="16">16</option>
+                </select>
+              </label>
+              <button id="newgame">New Game</button>
+            </div>
+            <div id="timer" class="timer">0:00</div>
+          </div>
+          <div class="board">
+            <div id="grid" class="grid"></div>
+            <svg id="lines" class="lines" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
         </div>
       </main>
       <footer class="footer">

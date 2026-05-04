@@ -72,7 +72,6 @@ html, body {
   color: var(--text);
   letter-spacing: 2px;
   font-variant-numeric: tabular-nums;
-  margin-top: 2px;
 }
 
 .controls {
@@ -80,8 +79,6 @@ html, body {
   gap: 12px;
   flex-wrap: wrap;
   align-items: flex-end;
-  justify-content: center;
-  margin-top: 10px;
 }
 
 .control {
@@ -151,11 +148,30 @@ button:active {
   min-height: 0;
 }
 
-.board {
-  position: relative;
+/* Board column: a vertical stack containing the toolbar (controls left,
+   timer right) and the board itself. The stack is what carries the
+   board's max-width and centering, so the toolbar always aligns with
+   the board's left and right edges. */
+.board-stack {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: min(70vh, 640px);
   margin: 0 auto;
+  gap: 12px;
+  min-height: 0;
+}
+
+.board-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.board {
+  position: relative;
+  width: 100%;
   aspect-ratio: 1;
   background: var(--panel);
   border-radius: var(--radius);
@@ -390,12 +406,15 @@ button:active {
     gap: 12px;
   }
 
-  .play .board { order: 1; }
-  .play .words { order: 2; }
+  .play .board-stack { order: 1; }
+  .play .words       { order: 2; }
+
+  .board-stack {
+    max-width: min(75vh, 100%);
+    gap: 10px;
+  }
 
   .board {
-    max-width: min(75vh, 100%);
-    margin: 0 auto;
     padding: 6px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.03);
   }
@@ -439,43 +458,46 @@ button:active {
 }
 
 /* Phone-only refinement: tighten padding/gap on very narrow viewports
-   so the board can claim every available pixel of width. */
+   so the board can claim every available pixel of width. Also drop the
+   "LANGUAGE" / "SIZE" labels — at < 480px they push the controls onto a
+   second row and steal vertical space; the dropdowns are self-evident
+   after one interaction. */
 @media (max-width: 480px) {
   #app { padding: 10px; gap: 10px; }
   .topbar h1 { font-size: 22px; letter-spacing: 3px; }
   .tagline { font-size: 11px; }
+
+  .control span { display: none; }
+  select {
+    margin-top: 0;
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+  button {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+  .timer { font-size: 18px; }
 }
 
 /* ── Layout C — Short landscape (phone landscape) ─────── */
 
 @media (max-height: 499px) and (orientation: landscape) {
-  #app { padding: 8px; gap: 8px; }
+  #app { padding: 8px; gap: 6px; }
 
-  /* Single-line header: title · timer · controls all inline,
-     no tagline (no room). */
-  .topbar {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-  }
+  /* Tiny centered title — tagline gone, controls/timer live in the
+     board-toolbar below. */
+  .topbar { gap: 0; }
   .topbar h1 {
-    font-size: 18px;
+    font-size: 16px;
     letter-spacing: 2px;
   }
   .tagline { display: none; }
-  .timer {
-    font-size: 16px;
-    margin-top: 0;
-    letter-spacing: 1.5px;
-  }
-  .controls {
-    margin-top: 0;
-    gap: 8px;
-  }
-  /* Hide the "LANGUAGE" / "SIZE" labels — selects are self-explanatory
-     given how often the user has seen them. */
+
+  /* Compact toolbar: hide select labels, shrink padding. Still
+     space-between so controls stay left and timer stays right. */
+  .board-toolbar { gap: 8px; }
+  .controls { gap: 8px; }
   .control span { display: none; }
   select {
     margin-top: 0;
@@ -488,8 +510,12 @@ button:active {
     letter-spacing: 1px;
     box-shadow: 0 1px 4px rgba(47, 111, 214, 0.2);
   }
+  .timer {
+    font-size: 16px;
+    letter-spacing: 1.5px;
+  }
 
-  /* Side-by-side: compact word column + board taking the rest. */
+  /* Side-by-side: compact word column + board-stack taking the rest. */
   .play {
     grid-template-columns: 130px 1fr;
     grid-template-rows: 1fr;
@@ -497,8 +523,14 @@ button:active {
     align-content: stretch;
     gap: 10px;
   }
-  .play .board { order: unset; }
-  .play .words { order: unset; }
+  .play .board-stack { order: unset; }
+  .play .words       { order: unset; }
+
+  .board-stack {
+    max-width: min(85vh, 100%);
+    gap: 6px;
+    height: 100%;
+  }
 
   .words {
     padding: 8px 10px;
@@ -534,15 +566,7 @@ button:active {
   .status { display: none; }
   .footer { display: none; }
 
-  /* Board: square, sized by available height (the binding constraint
-     in landscape) — capped to viewport width if for some reason that's
-     smaller. */
   .board {
-    width: 100%;
-    height: 100%;
-    max-width: min(85vh, 100%);
-    max-height: 100%;
-    margin: 0;
     padding: 5px;
   }
   .lines { inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); }
