@@ -22,6 +22,49 @@ export const DIRECTIONS: Dir[] = [
   [ 1, -1], [-1,  1]
 ];
 
+// Visual difficulty isn't uniform across the 8 directions. Left-to-right and
+// top-to-bottom both match natural reading order — a long word laid out that
+// way reads off the grid almost immediately. Diagonals and reversed
+// orientations require deliberate effort to scan.
+//
+// We bias the direction sample by word length: short words (< 6 letters)
+// stay roughly uniform (no benefit to forcing tiny words into hard slots),
+// while longer words get strongly pushed away from L→R / T→B and toward
+// diagonals + reversed. Each entry is the multiplicative weight applied to
+// that direction, ordered to match DIRECTIONS above.
+function directionWeights(wordLen: number): number[] {
+  // Tiered weights: easy directions shrink fast as words get longer.
+  const ltr = wordLen >= 8 ? 0.20 : wordLen >= 6 ? 0.45 : 0.85;
+  const ttb = wordLen >= 8 ? 0.55 : wordLen >= 6 ? 0.80 : 0.95;
+  // Reversed (R→L, B→T) sit between easy and diagonal — still axis-aligned
+  // but the eye doesn't auto-trace them.
+  const rev = 1.0;
+  // Diagonals are the hardest to scan, so we promote them.
+  const diag = 1.4;
+  return [
+    ltr,  // [ 0,  1] right
+    rev,  // [ 0, -1] left
+    ttb,  // [ 1,  0] down
+    rev,  // [-1,  0] up
+    diag, // [ 1,  1] down-right
+    diag, // [-1, -1] up-left
+    diag, // [ 1, -1] down-left
+    diag  // [-1,  1] up-right
+  ];
+}
+
+function pickWeightedDirection(wordLen: number): Dir {
+  const weights = directionWeights(wordLen);
+  let total = 0;
+  for (const w of weights) total += w;
+  let r = Math.random() * total;
+  for (let i = 0; i < weights.length; i++) {
+    r -= weights[i]!;
+    if (r <= 0) return DIRECTIONS[i]!;
+  }
+  return DIRECTIONS[DIRECTIONS.length - 1]!;
+}
+
 export interface Placement {
   word: string;
   letters: string[];
@@ -73,7 +116,7 @@ function tryPlace(
   requireNewCells: number = 0
 ): Placement | null {
   for (let attempt = 0; attempt < maxTries; attempt++) {
-    const dir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)]!;
+    const dir = pickWeightedDirection(letters.length);
     const [dr, dc] = dir;
     const len = letters.length;
 
