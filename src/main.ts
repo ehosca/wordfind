@@ -25,6 +25,7 @@ const $size = document.getElementById('size') as HTMLSelectElement;
 const $newgame = document.getElementById('newgame') as HTMLButtonElement;
 const $status = document.getElementById('status') as HTMLDivElement;
 const $board = document.querySelector('.board') as HTMLDivElement;
+const $themeToggle = document.getElementById('theme-toggle') as HTMLButtonElement;
 
 type Cell = [number, number];
 
@@ -391,8 +392,35 @@ function onPointerUp(_e: PointerEvent) {
   }
 }
 
+// ---------- theme ----------
+
+type Theme = 'light' | 'dark';
+const THEME_KEY = 'wordfind-theme';
+const META_COLOR_LIGHT = '#f6f4ee';
+const META_COLOR_DARK = '#16140f';
+
+function applyTheme(theme: Theme) {
+  document.documentElement.dataset.theme = theme;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? META_COLOR_DARK : META_COLOR_LIGHT);
+  $themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY) as Theme | null;
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved ?? (prefersDark ? 'dark' : 'light'));
+}
+
+$themeToggle.addEventListener('click', () => {
+  const next: Theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  localStorage.setItem(THEME_KEY, next);
+});
+
 // ---------- boot ----------
 
+initTheme();
 populateLanguages();
 // Default to a 10-grid on phones; 12 looks cramped under ~720px.
 if (window.matchMedia('(max-width: 720px)').matches) $size.value = '10';

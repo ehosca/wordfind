@@ -6,8 +6,34 @@
   --text-dim: #7a766d;
   --accent: #2f6fd6;
   --accent-hover: #2560b8;
+  --accent-glow: rgba(47, 111, 214, 0.25);
+  --accent-glow-strong: rgba(47, 111, 214, 0.3);
+  --accent-glow-soft: rgba(47, 111, 214, 0.12);
+  --accent-celebrate: rgba(47, 111, 214, 0.15);
+  --accent-celebrate-soft: rgba(47, 111, 214, 0.06);
+  --shadow-soft: rgba(0, 0, 0, 0.04);
+  --shadow-mid: rgba(0, 0, 0, 0.03);
   --select-dot: #d4d2cb;
   --radius: 12px;
+}
+
+[data-theme="dark"] {
+  --bg: #16140f;
+  --panel: #221f1a;
+  --grid-line: #3a352d;
+  --text: #f0ede5;
+  --text-dim: #8a857a;
+  --accent: #6ea0f0;
+  --accent-hover: #8ab4f5;
+  --accent-glow: rgba(110, 160, 240, 0.22);
+  --accent-glow-strong: rgba(110, 160, 240, 0.32);
+  --accent-glow-soft: rgba(110, 160, 240, 0.16);
+  --accent-celebrate: rgba(110, 160, 240, 0.18);
+  --accent-celebrate-soft: rgba(110, 160, 240, 0.08);
+  --shadow-soft: rgba(0, 0, 0, 0.35);
+  --shadow-mid: rgba(0, 0, 0, 0.25);
+  --select-dot: #4a453d;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -44,11 +70,48 @@ html, body {
 /* ── Header ───────────────────────────────────────────── */
 
 .topbar {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
 }
+
+.theme-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--grid-line);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px var(--shadow-soft);
+  text-transform: none;
+  letter-spacing: 0;
+  transition: background 150ms, border-color 150ms, color 150ms, transform 100ms;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--panel);
+  box-shadow: 0 2px 6px var(--shadow-soft);
+}
+
+.theme-toggle:active {
+  transform: scale(0.94);
+}
+
+.theme-toggle .icon-sun  { display: none; }
+.theme-toggle .icon-moon { display: block; }
+[data-theme="dark"] .theme-toggle .icon-sun  { display: block; }
+[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
 .topbar h1 {
   margin: 0;
@@ -109,7 +172,7 @@ select:hover { border-color: #ccc; }
 select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(47, 111, 214, 0.12);
+  box-shadow: 0 0 0 3px var(--accent-glow-soft);
 }
 
 button {
@@ -125,17 +188,17 @@ button {
   border-radius: 8px;
   cursor: pointer;
   transition: background 150ms, transform 100ms, box-shadow 150ms;
-  box-shadow: 0 2px 8px rgba(47, 111, 214, 0.25);
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 button:hover {
   background: var(--accent-hover);
-  box-shadow: 0 4px 14px rgba(47, 111, 214, 0.3);
+  box-shadow: 0 4px 14px var(--accent-glow-strong);
 }
 
 button:active {
   transform: scale(0.97);
-  box-shadow: 0 1px 4px rgba(47, 111, 214, 0.2);
+  box-shadow: 0 1px 4px var(--accent-glow-soft);
 }
 
 /* ── Play area ────────────────────────────────────────── */
@@ -176,7 +239,7 @@ button:active {
   background: var(--panel);
   border-radius: var(--radius);
   padding: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 3px var(--shadow-soft), 0 4px 16px var(--shadow-mid);
 }
 
 .grid {
@@ -260,7 +323,7 @@ button:active {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 3px var(--shadow-soft), 0 4px 16px var(--shadow-mid);
 }
 
 .words h2 {
@@ -343,9 +406,9 @@ button:active {
 }
 
 @keyframes board-glow {
-  0%   { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03); }
-  50%  { box-shadow: 0 0 30px rgba(47, 111, 214, 0.15), 0 0 60px rgba(47, 111, 214, 0.06); }
-  100% { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03); }
+  0%   { box-shadow: 0 1px 3px var(--shadow-soft), 0 4px 16px var(--shadow-mid); }
+  50%  { box-shadow: 0 0 30px var(--accent-celebrate), 0 0 60px var(--accent-celebrate-soft); }
+  100% { box-shadow: 0 1px 3px var(--shadow-soft), 0 4px 16px var(--shadow-mid); }
 }
 
 /* ── Footer ───────────────────────────────────────────── */
@@ -416,7 +479,7 @@ button:active {
 
   .board {
     padding: 6px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 1px 2px var(--shadow-soft), 0 2px 8px var(--shadow-mid);
   }
   .lines { inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); }
 
@@ -466,6 +529,8 @@ button:active {
   #app { padding: 10px; gap: 10px; }
   .topbar h1 { font-size: 22px; letter-spacing: 3px; }
   .tagline { font-size: 11px; }
+  .theme-toggle { width: 34px; height: 34px; }
+  .theme-toggle svg { width: 16px; height: 16px; }
 
   .control span { display: none; }
   select {
@@ -493,6 +558,8 @@ button:active {
     letter-spacing: 2px;
   }
   .tagline { display: none; }
+  .theme-toggle { width: 28px; height: 28px; top: -2px; }
+  .theme-toggle svg { width: 14px; height: 14px; }
 
   /* Compact toolbar: hide select labels, shrink padding. Still
      space-between so controls stay left and timer stays right. */
@@ -508,7 +575,7 @@ button:active {
     padding: 6px 14px;
     font-size: 11px;
     letter-spacing: 1px;
-    box-shadow: 0 1px 4px rgba(47, 111, 214, 0.2);
+    box-shadow: 0 1px 4px var(--accent-glow-soft);
   }
   .timer {
     font-size: 16px;
