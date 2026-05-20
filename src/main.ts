@@ -42,6 +42,7 @@ interface State {
 }
 
 let state: State | null = null;
+let revealTimers: ReturnType<typeof setTimeout>[] = [];
 
 // ---------- timer ----------
 
@@ -100,6 +101,74 @@ function newGame() {
 
   const puzzle = generatePuzzle(size, chosen, lang.alphabet);
   renderBoard(puzzle, lang, theme);
+  revealBoard(puzzle, lang);
+}
+
+function revealBoard(puzzle: Puzzle, lang: LanguagePack) {
+  if (!state) return;
+
+  // Clear any in-flight reveal from a previous game.
+  for (const t of revealTimers) clearTimeout(t);
+  revealTimers = [];
+
+  const alphabet = Array.from(lang.alphabet);
+  const pick = () => alphabet[Math.floor(Math.random() * alphabet.length)]!;
+
+  const STAGGER = 32;     // per diagonal step (r + c)
+  const TICK = 75;        // ms between letter changes per cell
+  const MIN_TICKS = 5;
+  const MAX_TICKS = 9;
+
+  $grid.classList.add('revealing');
+
+  // Each tick is one full flap: the current letter rotates down out of view,
+  // the new letter takes its place at the midpoint, then rotates up into
+  // place. Driven by the Web Animations API so the compositor handles it
+  // without any layout/reflow work on the main thread.
+  function flap(glyph: HTMLElement, newChar: string) {
+    // Swap the character at the rotational midpoint, when the glyph is
+    // edge-on and effectively invisible.
+    const swap = setTimeout(() => { glyph.textContent = newChar; }, TICK * 0.5);
+    revealTimers.push(swap);
+
+    glyph.animate(
+      [
+        { transform: 'rotateX(0deg)',   opacity: 1,   offset: 0,
+          easing: 'cubic-bezier(0.55, 0, 0.9, 0.4)' },
+        { transform: 'rotateX(-90deg)', opacity: 0.1, offset: 0.5 },
+        { transform: 'rotateX(90deg)',  opacity: 0.1, offset: 0.5001,
+          easing: 'cubic-bezier(0.1, 0.6, 0.4, 1)' },
+        { transform: 'rotateX(0deg)',   opacity: 1,   offset: 1 }
+      ],
+      { duration: TICK, fill: 'none' }
+    );
+  }
+
+  let maxEnd = 0;
+  for (let r = 0; r < puzzle.size; r++) {
+    for (let c = 0; c < puzzle.size; c++) {
+      const glyph = state.cellEls[r]![c]!.querySelector('.glyph') as HTMLElement;
+      const final = puzzle.cells[r]![c]!;
+      const ticks = MIN_TICKS + Math.floor(Math.random() * (MAX_TICKS - MIN_TICKS + 1));
+      const startDelay = r * STAGGER + Math.floor(Math.random() * 30);
+      const end = startDelay + ticks * TICK;
+      if (end > maxEnd) maxEnd = end;
+
+      // Prime the cell with a random letter so the user never sees the final
+      // letter before the animation kicks in.
+      glyph.textContent = pick();
+
+      for (let i = 0; i < ticks; i++) {
+        const last = i === ticks - 1;
+        const nextChar = last ? final : pick();
+        const t = setTimeout(() => flap(glyph, nextChar), startDelay + i * TICK);
+        revealTimers.push(t);
+      }
+    }
+  }
+
+  const done = setTimeout(() => $grid.classList.remove('revealing'), maxEnd + TICK);
+  revealTimers.push(done);
 }
 
 function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {

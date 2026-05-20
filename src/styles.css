@@ -286,13 +286,19 @@ button:active {
   position: relative;
   z-index: 3;
   font-feature-settings: "kern" 1, "ss01" 1, "cv11" 1;
+  perspective: 320px;
 }
 
 .cell .glyph {
   display: inline-block;
   height: 1cap;
   line-height: 1cap;
+  transform-origin: center;
+  backface-visibility: hidden;
 }
+
+.grid.revealing { pointer-events: none; }
+.grid.revealing .glyph { will-change: transform, opacity; }
 
 @supports not (height: 1cap) {
   .cell .glyph {
