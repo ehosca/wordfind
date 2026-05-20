@@ -524,7 +524,8 @@ button:active {
    so the board can claim every available pixel of width. Also drop the
    "LANGUAGE" / "SIZE" labels — at < 480px they push the controls onto a
    second row and steal vertical space; the dropdowns are self-evident
-   after one interaction. */
+   after one interaction. Size picker is removed entirely on phones —
+   the board is fixed at 10×10 (set in JS). */
 @media (max-width: 480px) {
   #app { padding: 10px; gap: 10px; }
   .topbar h1 { font-size: 22px; letter-spacing: 3px; }
@@ -533,6 +534,7 @@ button:active {
   .theme-toggle svg { width: 16px; height: 16px; }
 
   .control span { display: none; }
+  .control:has(#size) { display: none; }
   select {
     margin-top: 0;
     padding: 7px 10px;
@@ -566,6 +568,7 @@ button:active {
   .board-toolbar { gap: 8px; }
   .controls { gap: 8px; }
   .control span { display: none; }
+  .control:has(#size) { display: none; }
   select {
     margin-top: 0;
     padding: 5px 10px;
