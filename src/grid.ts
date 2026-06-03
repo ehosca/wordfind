@@ -39,8 +39,10 @@ function directionWeights(wordLen: number): number[] {
   // Reversed (R→L, B→T) sit between easy and diagonal — still axis-aligned
   // but the eye doesn't auto-trace them.
   const rev = 1.0;
-  // Diagonals are the hardest to scan, so we promote them.
-  const diag = 1.4;
+  // Diagonals are the hardest to scan, so we promote them — but only mildly.
+  // Over-promoting produces all-diagonal layouts, which are just as list-like
+  // as all-horizontal ones (parallel diagonals that never cross).
+  const diag = 1.45;
   return [
     ltr,  // [ 0,  1] right
     rev,  // [ 0, -1] left
@@ -82,6 +84,9 @@ export interface Puzzle {
 
 const MAX_TRIES = 200;
 const DECOY_MAX_TRIES = 80;
+// How many full real-word layouts to generate and score before accepting one.
+// Each is microseconds; the loop almost always breaks early on the first pass.
+const MAX_LAYOUT_ATTEMPTS = 120;
 // How many decoys to aim for. The grid has ~size² cells; with 8 placed words
 // occupying ~50 cells, we have plenty of room for 12 short decoys without
 // dominating the layout.
@@ -180,11 +185,86 @@ function generateDecoyCandidates(
   return Array.from(subs).map(s => splitGraphemes(s));
 }
 
-export function generatePuzzle(
+// Axis class of a placement: 'H' horizontal, 'V' vertical, 'D' diagonal.
+function axisOf(dir: Dir): 'H' | 'V' | 'D' {
+  if (dir[0] === 0) return 'H';
+  if (dir[1] === 0) return 'V';
+  return 'D';
+}
+
+// Longest run of same-axis words occupying consecutive rows (for H) or columns
+// (for V). A run of 3+ reads as a stacked, list-like block — the exact failure
+// we're guarding against.
+function maxConsecutiveRun(lines: number[]): number {
+  if (lines.length === 0) return 0;
+  const uniq = Array.from(new Set(lines)).sort((a, b) => a - b);
+  let best = 1, run = 1;
+  for (let i = 1; i < uniq.length; i++) {
+    run = uniq[i]! === uniq[i - 1]! + 1 ? run + 1 : 1;
+    if (run > best) best = run;
+  }
+  return best;
+}
+
+export interface LayoutScore {
+  pass: boolean;
+  diagonals: number;
+  maxParallelRun: number;
+  crossings: number;
+  sameAxisMax: number;
+}
+
+// Score an emergent layout against the "doesn't look like a word list" rules.
+// `diagQuota` lets the caller relax the diagonal floor on tight grids.
+export function scoreLayout(
+  placements: Placement[],
+  diagQuota?: number
+): LayoutScore {
+  const n = placements.length;
+  const axes = placements.map(p => axisOf(p.dir));
+  const diagonals = axes.filter(a => a === 'D').length;
+
+  // Same-axis counts.
+  const counts = { H: 0, V: 0, D: 0 };
+  for (const a of axes) counts[a]++;
+  const sameAxisMax = Math.max(counts.H, counts.V, counts.D);
+
+  // Stacking: H words on consecutive rows, V words on consecutive cols.
+  const hRows: number[] = [];
+  const vCols: number[] = [];
+  for (const p of placements) {
+    const a = axisOf(p.dir);
+    if (a === 'H') hRows.push(p.row);
+    else if (a === 'V') vCols.push(p.col);
+  }
+  const maxParallelRun = Math.max(maxConsecutiveRun(hRows), maxConsecutiveRun(vCols));
+
+  // Crossings: cells covered by 2+ placements.
+  const cover = new Map<string, number>();
+  for (const p of placements) {
+    for (const [r, c] of p.cells) {
+      const k = `${r},${c}`;
+      cover.set(k, (cover.get(k) ?? 0) + 1);
+    }
+  }
+  let crossings = 0;
+  for (const v of cover.values()) if (v >= 2) crossings++;
+
+  const reqDiag = diagQuota ?? Math.ceil(n * 0.25);
+  const pass =
+    diagonals >= reqDiag &&
+    maxParallelRun < 3 &&
+    sameAxisMax <= Math.ceil(n * 0.6) &&
+    crossings >= 1;
+
+  return { pass, diagonals, maxParallelRun, crossings, sameAxisMax };
+}
+
+// One full real-word placement pass on a fresh grid.
+function placeRealWords(
   size: number,
-  words: string[],
-  alphabet: string
-): Puzzle {
+  words: string[]
+): { cells: string[][]; placements: Placement[] } {
   // Place longest words first — they're the hardest to fit.
   const sorted = [...words].sort((a, b) => b.length - a.length);
   const cells: string[][] = Array.from({ length: size }, () =>
@@ -197,6 +277,46 @@ export function generatePuzzle(
     if (letters.length > size) continue;
     const placement = tryPlace(cells, size, letters);
     if (placement) placements.push(placement);
+  }
+  return { cells, placements };
+}
+
+// Composite quality used to pick the best candidate when none fully pass
+// (tight grids). Reward crossings and a few diagonals; punish the list-like
+// extremes — long parallel runs, one axis dominating, and zero crossings.
+function layoutQuality(s: LayoutScore, n: number): number {
+  return (
+    s.crossings * 4 +
+    Math.min(s.diagonals, Math.ceil(n * 0.5)) * 2 -
+    s.maxParallelRun * 3 -
+    Math.max(0, s.sameAxisMax - Math.ceil(n * 0.6)) * 5 -
+    (s.crossings === 0 ? 6 : 0)
+  );
+}
+
+export function generatePuzzle(
+  size: number,
+  words: string[],
+  alphabet: string
+): Puzzle {
+  // Generate several full layouts and keep the first that passes the quality
+  // rules — or the best-scored one if none do (tight grids). This guards
+  // against emergent "stacked word list" layouts that per-word direction
+  // weighting can't prevent.
+  let cells: string[][] = [];
+  let placements: Placement[] = [];
+  let bestQuality = -Infinity;
+
+  for (let attempt = 0; attempt < MAX_LAYOUT_ATTEMPTS; attempt++) {
+    const cand = placeRealWords(size, words);
+    const s = scoreLayout(cand.placements);
+    const q = layoutQuality(s, cand.placements.length) + (s.pass ? 1000 : 0);
+    if (q > bestQuality) {
+      bestQuality = q;
+      cells = cand.cells;
+      placements = cand.placements;
+    }
+    if (s.pass) break;
   }
 
   // Plant sub-word decoys. tryPlace's requireNewCells=1 guarantees each decoy
