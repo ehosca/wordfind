@@ -1,5 +1,6 @@
 import { LANGUAGES, pickPool, type LanguagePack } from './words';
 import { generatePuzzle, type Placement, type Puzzle } from './grid';
+import { STRINGS, type UIStrings } from './i18n';
 
 const TARGET_WORD_COUNT = 8;
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -26,6 +27,10 @@ const $newgame = document.getElementById('newgame') as HTMLButtonElement;
 const $status = document.getElementById('status') as HTMLDivElement;
 const $board = document.querySelector('.board') as HTMLDivElement;
 const $themeToggle = document.getElementById('theme-toggle') as HTMLButtonElement;
+const $tagline = document.getElementById('tagline') as HTMLParagraphElement;
+const $findHeading = document.getElementById('find-heading') as HTMLHeadingElement;
+const $labelLang = document.getElementById('label-lang') as HTMLSpanElement;
+const $labelSize = document.getElementById('label-size') as HTMLSpanElement;
 
 type Cell = [number, number];
 
@@ -77,6 +82,23 @@ function stopTimer(): string {
   const elapsed = formatTime(Date.now() - timerStart);
   $timer.textContent = elapsed;
   return elapsed;
+}
+
+// ---------- i18n ----------
+
+const LANG_KEY = 'wordfind-lang';
+let strings: UIStrings = STRINGS['en']!;
+
+function applyI18n(code: string) {
+  strings = STRINGS[code] ?? STRINGS['en']!;
+  document.documentElement.lang = code;
+  $tagline.textContent = strings.tagline;
+  $findHeading.textContent = strings.find;
+  $labelLang.textContent = strings.language;
+  $labelSize.textContent = strings.size;
+  $newgame.textContent = strings.newGame;
+  const theme = (document.documentElement.dataset.theme as Theme) ?? 'light';
+  $themeToggle.setAttribute('aria-label', theme === 'dark' ? strings.switchToLight : strings.switchToDark);
 }
 
 // ---------- setup ----------
@@ -214,7 +236,8 @@ function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
   }
 
   $status.classList.remove('win');
-  $status.textContent = `${lang.label} · ${theme} · ${puzzle.placements.length} words`;
+  const themeLabel = strings.themes[theme] ?? theme;
+  $status.textContent = `${lang.label} · ${themeLabel} · ${puzzle.placements.length} ${strings.words}`;
   startTimer();
 
   state = {
@@ -411,7 +434,7 @@ function trySubmit(cells: Cell[]) {
   // Win!
   if (state.remaining.length === 0) {
     const elapsed = stopTimer();
-    $status.textContent = `All words found in ${elapsed}!`;
+    $status.textContent = strings.allFound.replace('{time}', elapsed);
     $status.classList.add('win');
     $board.classList.add('celebrating');
   }
@@ -472,7 +495,7 @@ function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme = theme;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', theme === 'dark' ? META_COLOR_DARK : META_COLOR_LIGHT);
-  $themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  $themeToggle.setAttribute('aria-label', theme === 'dark' ? strings.switchToLight : strings.switchToDark);
 }
 
 function initTheme() {
@@ -491,11 +514,18 @@ $themeToggle.addEventListener('click', () => {
 
 initTheme();
 populateLanguages();
+const savedLang = localStorage.getItem(LANG_KEY);
+if (savedLang && LANGUAGES.some(l => l.code === savedLang)) $lang.value = savedLang;
+applyI18n($lang.value);
 // Default to a 10-grid on phones; 12 looks cramped under ~720px.
 if (window.matchMedia('(max-width: 720px)').matches) $size.value = '10';
 attachPointerHandlers();
 window.addEventListener('resize', redrawLines);
 $newgame.addEventListener('click', newGame);
-$lang.addEventListener('change', newGame);
+$lang.addEventListener('change', () => {
+  localStorage.setItem(LANG_KEY, $lang.value);
+  applyI18n($lang.value);
+  newGame();
+});
 $size.addEventListener('change', newGame);
 newGame();

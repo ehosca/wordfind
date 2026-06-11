@@ -15,7 +15,7 @@
     <div id="app">
       <header class="topbar">
         <h1>WORD<span class="accent">FIND</span></h1>
-        <p class="tagline">find the hidden words</p>
+        <p class="tagline" id="tagline">find the hidden words</p>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark mode">
           <svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="4"/>
@@ -28,7 +28,7 @@
       </header>
       <main class="play">
         <aside class="words">
-          <h2>Find</h2>
+          <h2 id="find-heading">Find</h2>
           <ul id="wordlist"></ul>
           <div id="status" class="status"></div>
         </aside>
@@ -36,11 +36,11 @@
           <div class="board-toolbar">
             <div class="controls">
               <label class="control">
-                <span>Language</span>
+                <span id="label-lang">Language</span>
                 <select id="lang"></select>
               </label>
               <label class="control">
-                <span>Size</span>
+                <span id="label-size">Size</span>
                 <select id="size">
                   <option value="10">10</option>
                   <option value="12" selected>12</option>
