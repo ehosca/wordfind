@@ -28,9 +28,9 @@
       </header>
       <main class="play">
         <aside class="words">
-          <h2 id="find-heading">Find</h2>
+          <h2 id="find-heading"><span id="list-theme">Find</span><span id="list-count" class="count"></span></h2>
           <ul id="wordlist"></ul>
-          <div id="status" class="status"></div>
+          <div id="status" class="status" aria-live="polite"></div>
         </aside>
         <div class="board-stack">
           <div class="board-toolbar">
@@ -55,6 +55,15 @@
           <div class="board">
             <div id="grid" class="grid"></div>
             <svg id="lines" class="lines" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div id="win-overlay" class="win-overlay" hidden>
+              <div id="confetti" class="confetti" aria-hidden="true"></div>
+              <div class="win-card" role="status">
+                <div class="win-title" id="win-title"></div>
+                <div class="win-time" id="win-time"></div>
+                <div class="win-sub" id="win-sub"></div>
+                <button id="play-again" type="button"></button>
+              </div>
+            </div>
           </div>
         </div>
       </main>

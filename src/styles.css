@@ -3,7 +3,7 @@
   --panel: #ffffff;
   --grid-line: #e2dfd6;
   --text: #1f1d1a;
-  --text-dim: #7a766d;
+  --text-dim: #6d6a60;
   --accent: #2f6fd6;
   --accent-hover: #2560b8;
   --accent-glow: rgba(47, 111, 214, 0.25);
@@ -13,7 +13,8 @@
   --accent-celebrate-soft: rgba(47, 111, 214, 0.06);
   --shadow-soft: rgba(0, 0, 0, 0.04);
   --shadow-mid: rgba(0, 0, 0, 0.03);
-  --select-dot: #d4d2cb;
+  --select-dot: #c1d4f3;
+  --overlay-bg: rgba(255, 255, 255, 0.78);
   --radius: 12px;
 }
 
@@ -32,7 +33,8 @@
   --accent-celebrate-soft: rgba(110, 160, 240, 0.08);
   --shadow-soft: rgba(0, 0, 0, 0.35);
   --shadow-mid: rgba(0, 0, 0, 0.25);
-  --select-dot: #4a453d;
+  --select-dot: #3a485e;
+  --overlay-bg: rgba(34, 31, 26, 0.78);
   color-scheme: dark;
 }
 
@@ -167,7 +169,7 @@ select {
   transition: border-color 150ms, box-shadow 150ms;
 }
 
-select:hover { border-color: #ccc; }
+select:hover { border-color: var(--text-dim); }
 
 select:focus {
   outline: none;
@@ -205,7 +207,7 @@ button:active {
 
 .play {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 240px 1fr;
   gap: 24px;
   flex: 1;
   min-height: 0;
@@ -265,7 +267,7 @@ button:active {
 .lines line { stroke-linecap: round; }
 
 .lines .selecting line   { stroke: var(--select-dot); }
-.lines .selecting circle { stroke: var(--select-dot); fill: var(--select-dot); }
+.lines .selecting circle { stroke: var(--accent); stroke-width: 2; fill: var(--select-dot); }
 /* .found colours are set inline per-group from JS */
 
 /* ── Cells ────────────────────────────────────────────── */
@@ -310,6 +312,8 @@ button:active {
 
 .cell.in-found { color: #ffffff; }
 
+.cell.in-sel { transform: scale(1.18); }
+
 .cell.flash {
   animation: flash 400ms ease-out;
 }
@@ -317,6 +321,18 @@ button:active {
 @keyframes flash {
   0%   { transform: scale(1.25); }
   100% { transform: scale(1); }
+}
+
+.cell.miss {
+  animation: miss-shake 280ms ease;
+}
+
+@keyframes miss-shake {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
 }
 
 /* ── Word list ────────────────────────────────────────── */
@@ -330,15 +346,25 @@ button:active {
   flex-direction: column;
   gap: 4px;
   box-shadow: 0 1px 3px var(--shadow-soft), 0 4px 16px var(--shadow-mid);
+  align-self: start;
 }
 
 .words h2 {
-  margin: 0 0 8px;
-  font-size: 11px;
+  margin: 0 0 10px;
+  font-size: 12px;
   letter-spacing: 2.5px;
   color: var(--text-dim);
   text-transform: uppercase;
   font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.words h2 .count {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
 }
 
 #wordlist {
@@ -347,8 +373,8 @@ button:active {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font-size: 15px;
+  gap: 4px;
+  font-size: 17px;
 }
 
 #wordlist li {
@@ -371,7 +397,7 @@ button:active {
 }
 
 #wordlist li.found {
-  opacity: 0.5;
+  opacity: 0.65;
 }
 
 #wordlist li.found .word-text {
@@ -411,6 +437,69 @@ button:active {
   animation: board-glow 1s ease;
 }
 
+/* ── Win overlay ──────────────────────────────────────── */
+
+.win-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius);
+  background: var(--overlay-bg);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  overflow: hidden;
+}
+
+.win-overlay[hidden] { display: none; }
+
+.win-card {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  animation: bounceIn 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.win-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.win-time {
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  line-height: 1.2;
+}
+
+.win-sub {
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+}
+
+.confetti {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: 0;
+  border-radius: 2px;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
 @keyframes board-glow {
   0%   { box-shadow: 0 1px 3px var(--shadow-soft), 0 4px 16px var(--shadow-mid); }
   50%  { box-shadow: 0 0 30px var(--accent-celebrate), 0 0 60px var(--accent-celebrate-soft); }
@@ -439,7 +528,6 @@ button:active {
   color: var(--text);
   border-bottom-color: currentColor;
 }
-
 /* ────────────────────────────────────────────────────────
  * Responsive system: three layouts driven by viewport size.
  *
@@ -494,8 +582,14 @@ button:active {
   .words {
     padding: clamp(10px, 1.6vw, 14px) clamp(12px, 2vw, 16px);
     gap: 6px;
+    align-self: auto;
   }
-  .words h2 { display: none; }
+  .words h2 {
+    display: flex;
+    justify-content: center;
+    font-size: 11px;
+    margin: 2px 0 2px;
+  }
 
   /* Pills: fluid sizing so tablet portrait gets noticeably larger
      pills than phone portrait, no extra breakpoint needed. */
@@ -612,8 +706,16 @@ button:active {
     padding: 8px 10px;
     gap: 4px;
     overflow-y: auto;
+    align-self: auto;
   }
-  .words h2 { display: none; }
+  .words h2 {
+    display: flex;
+    font-size: 9px;
+    letter-spacing: 1px;
+    margin: 0 0 2px;
+  }
+
+  .win-time { font-size: 36px; }
 
   #wordlist {
     flex-direction: column;

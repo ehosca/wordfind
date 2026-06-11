@@ -10,6 +10,8 @@ export interface UIStrings {
   newGame: string;
   words: string;
   allFound: string;
+  winTitle: string;
+  playAgain: string;
   switchToLight: string;
   switchToDark: string;
   themes: Record<string, string>;
@@ -24,6 +26,8 @@ export const STRINGS: Record<string, UIStrings> = {
     newGame: 'New Game',
     words: 'words',
     allFound: 'All words found in {time}!',
+    winTitle: 'Puzzle complete!',
+    playAgain: 'Play Again',
     switchToLight: 'Switch to light mode',
     switchToDark: 'Switch to dark mode',
     themes: {
@@ -41,6 +45,8 @@ export const STRINGS: Record<string, UIStrings> = {
     newGame: 'Nueva partida',
     words: 'palabras',
     allFound: '¡Todas las palabras encontradas en {time}!',
+    winTitle: '¡Puzle completado!',
+    playAgain: 'Jugar de nuevo',
     switchToLight: 'Cambiar a modo claro',
     switchToDark: 'Cambiar a modo oscuro',
     themes: {
@@ -58,6 +64,8 @@ export const STRINGS: Record<string, UIStrings> = {
     newGame: 'Nouvelle partie',
     words: 'mots',
     allFound: 'Tous les mots trouvés en {time} !',
+    winTitle: 'Grille terminée !',
+    playAgain: 'Rejouer',
     switchToLight: 'Passer en mode clair',
     switchToDark: 'Passer en mode sombre',
     themes: {
@@ -75,6 +83,8 @@ export const STRINGS: Record<string, UIStrings> = {
     newGame: 'Neues Spiel',
     words: 'Wörter',
     allFound: 'Alle Wörter in {time} gefunden!',
+    winTitle: 'Rätsel gelöst!',
+    playAgain: 'Nochmal spielen',
     switchToLight: 'Zum hellen Modus wechseln',
     switchToDark: 'Zum dunklen Modus wechseln',
     themes: {
@@ -92,6 +102,8 @@ export const STRINGS: Record<string, UIStrings> = {
     newGame: 'Yeni Oyun',
     words: 'kelime',
     allFound: 'Tüm kelimeler {time} içinde bulundu!',
+    winTitle: 'Bulmaca tamamlandı!',
+    playAgain: 'Tekrar Oyna',
     switchToLight: 'Açık moda geç',
     switchToDark: 'Koyu moda geç',
     themes: {

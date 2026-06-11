@@ -5,16 +5,23 @@ import { STRINGS, type UIStrings } from './i18n';
 const TARGET_WORD_COUNT = 8;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-// Soft, muted palette — each found word gets the next colour.
+// Soft, muted palette — each found word gets the next colour. Kept dark
+// enough that the white letters on found dots hold ≥3:1 contrast.
 const FOUND_COLORS = [
-  '#7EA886', // sage
-  '#C2785C', // terracotta
-  '#6B8DB5', // dusty blue
-  '#C4A24E', // amber
-  '#9B7BAA', // plum
-  '#5B9E94', // teal
-  '#D4826A', // coral
-  '#8B8DB5', // lavender
+  '#5E8A67', // sage
+  '#A85B40', // terracotta
+  '#4E76A6', // dusty blue
+  '#8F6F2A', // ochre
+  '#7E5C8E', // plum
+  '#3F827A', // teal
+  '#B25E45', // coral
+  '#67699B', // lavender
+];
+
+// Brighter variants reserved for confetti, which carries no text.
+const CONFETTI_COLORS = [
+  '#7EA886', '#C2785C', '#6B8DB5', '#C4A24E',
+  '#9B7BAA', '#5B9E94', '#D4826A', '#8B8DB5',
 ];
 
 const $timer = document.getElementById('timer') as HTMLDivElement;
@@ -28,9 +35,16 @@ const $status = document.getElementById('status') as HTMLDivElement;
 const $board = document.querySelector('.board') as HTMLDivElement;
 const $themeToggle = document.getElementById('theme-toggle') as HTMLButtonElement;
 const $tagline = document.getElementById('tagline') as HTMLParagraphElement;
-const $findHeading = document.getElementById('find-heading') as HTMLHeadingElement;
+const $listTheme = document.getElementById('list-theme') as HTMLSpanElement;
+const $listCount = document.getElementById('list-count') as HTMLSpanElement;
 const $labelLang = document.getElementById('label-lang') as HTMLSpanElement;
 const $labelSize = document.getElementById('label-size') as HTMLSpanElement;
+const $winOverlay = document.getElementById('win-overlay') as HTMLDivElement;
+const $winTitle = document.getElementById('win-title') as HTMLDivElement;
+const $winTime = document.getElementById('win-time') as HTMLDivElement;
+const $winSub = document.getElementById('win-sub') as HTMLDivElement;
+const $playAgain = document.getElementById('play-again') as HTMLButtonElement;
+const $confetti = document.getElementById('confetti') as HTMLDivElement;
 
 type Cell = [number, number];
 
@@ -43,11 +57,13 @@ interface State {
   startCell: Cell | null;
   selecting: Cell[] | null;
   selectGroup: SVGGElement | null;
+  selEls: HTMLDivElement[];
   colorIndex: number;
 }
 
 let state: State | null = null;
 let revealTimers: ReturnType<typeof setTimeout>[] = [];
+let currentThemeLabel = '';
 
 // ---------- timer ----------
 
@@ -93,10 +109,11 @@ function applyI18n(code: string) {
   strings = STRINGS[code] ?? STRINGS['en']!;
   document.documentElement.lang = code;
   $tagline.textContent = strings.tagline;
-  $findHeading.textContent = strings.find;
+  $listTheme.textContent = strings.find;
   $labelLang.textContent = strings.language;
   $labelSize.textContent = strings.size;
   $newgame.textContent = strings.newGame;
+  $playAgain.textContent = strings.playAgain;
   const theme = (document.documentElement.dataset.theme as Theme) ?? 'light';
   $themeToggle.setAttribute('aria-label', theme === 'dark' ? strings.switchToLight : strings.switchToDark);
 }
@@ -237,7 +254,12 @@ function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
 
   $status.classList.remove('win');
   const themeLabel = strings.themes[theme] ?? theme;
+  currentThemeLabel = themeLabel;
   $status.textContent = `${lang.label} · ${themeLabel} · ${puzzle.placements.length} ${strings.words}`;
+  $listTheme.textContent = themeLabel;
+  $listCount.textContent = `0/${puzzle.placements.length}`;
+  $winOverlay.hidden = true;
+  $confetti.innerHTML = '';
   startTimer();
 
   state = {
@@ -249,6 +271,7 @@ function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
     startCell: null,
     selecting: null,
     selectGroup: null,
+    selEls: [],
     colorIndex: 0
   };
 }
@@ -342,10 +365,18 @@ function buildPathGroup(
   return g;
 }
 
+function setSelectedCells(cells: Cell[]) {
+  if (!state) return;
+  for (const el of state.selEls) el.classList.remove('in-sel');
+  state.selEls = cells.map(([r, c]) => state!.cellEls[r]![c]!);
+  for (const el of state.selEls) el.classList.add('in-sel');
+}
+
 function paintSelection(cells: Cell[]) {
   if (!state) return;
   if (state.selectGroup) state.selectGroup.remove();
   state.selectGroup = null;
+  setSelectedCells(cells);
   if (cells.length === 0) return;
   const g = buildPathGroup(cells, 'selecting');
   $lines.appendChild(g);
@@ -386,8 +417,8 @@ function nextColor(): string {
   return c;
 }
 
-function trySubmit(cells: Cell[]) {
-  if (!state || cells.length < 2) return;
+function trySubmit(cells: Cell[]): boolean {
+  if (!state || cells.length < 2) return false;
   let match: Placement | undefined;
   for (const p of state.remaining) {
     if (pathMatchesPlacement(cells, p)) { match = p; break; }
@@ -399,10 +430,11 @@ function trySubmit(cells: Cell[]) {
       if (p.word === fwd || p.word === rev) { match = p; break; }
     }
   }
-  if (!match) return;
+  if (!match) return false;
 
   state.found.add(match.word);
   state.remaining = state.remaining.filter(p => p !== match);
+  $listCount.textContent = `${state.found.size}/${state.puzzle.placements.length}`;
 
   // Pick the next colour from the palette.
   const color = nextColor();
@@ -437,7 +469,60 @@ function trySubmit(cells: Cell[]) {
     $status.textContent = strings.allFound.replace('{time}', elapsed);
     $status.classList.add('win');
     $board.classList.add('celebrating');
+    showWin(elapsed);
   }
+  return true;
+}
+
+function missFeedback(cells: Cell[]) {
+  if (!state) return;
+  for (const [r, c] of cells) {
+    const el = state.cellEls[r]![c]!;
+    el.classList.add('miss');
+    setTimeout(() => el.classList.remove('miss'), 300);
+  }
+}
+
+// ---------- win celebration ----------
+
+function showWin(elapsed: string) {
+  if (!state) return;
+  $winTitle.textContent = strings.winTitle;
+  $winTime.textContent = elapsed;
+  $winSub.textContent = `${currentThemeLabel} · ${state.puzzle.placements.length} ${strings.words}`;
+  $playAgain.textContent = strings.playAgain;
+  $winOverlay.hidden = false;
+  spawnConfetti();
+}
+
+function spawnConfetti() {
+  $confetti.innerHTML = '';
+  const fallHeight = $board.clientHeight + 30;
+  for (let i = 0; i < 70; i++) {
+    const p = document.createElement('span');
+    p.className = 'confetti-piece';
+    p.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length]!;
+    p.style.left = `${Math.random() * 100}%`;
+    const w = 5 + Math.random() * 5;
+    p.style.width = `${w}px`;
+    p.style.height = `${w * 1.6}px`;
+    $confetti.appendChild(p);
+    const spin = 360 + Math.random() * 420;
+    p.animate(
+      [
+        { transform: 'translateY(-20px) rotate(0deg)', opacity: 1 },
+        { transform: `translateY(${fallHeight * 0.9}px) rotate(${spin * 0.9}deg)`, opacity: 1, offset: 0.9 },
+        { transform: `translateY(${fallHeight}px) rotate(${spin}deg)`, opacity: 0 }
+      ],
+      {
+        duration: 1300 + Math.random() * 900,
+        delay: Math.random() * 350,
+        easing: 'cubic-bezier(0.25, 0.4, 0.6, 1)',
+        fill: 'both'
+      }
+    );
+  }
+  setTimeout(() => { $confetti.innerHTML = ''; }, 2800);
 }
 
 // ---------- pointer handlers ----------
@@ -475,8 +560,9 @@ function onPointerUp(_e: PointerEvent) {
   const sel = state.selecting;
   state.selecting = null;
   state.startCell = null;
+  setSelectedCells([]);
   if (sel && sel.length > 1) {
-    trySubmit(sel);
+    if (!trySubmit(sel)) missFeedback(sel);
   }
   if (state.selectGroup) {
     state.selectGroup.remove();
@@ -522,6 +608,7 @@ if (window.matchMedia('(max-width: 720px)').matches) $size.value = '10';
 attachPointerHandlers();
 window.addEventListener('resize', redrawLines);
 $newgame.addEventListener('click', newGame);
+$playAgain.addEventListener('click', newGame);
 $lang.addEventListener('change', () => {
   localStorage.setItem(LANG_KEY, $lang.value);
   applyI18n($lang.value);
