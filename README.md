@@ -2,6 +2,8 @@
 
 A multilingual word-search puzzle. Drag through letters in any straight line — horizontal, vertical, or diagonal, forward or reverse — to find the hidden words. Five languages: English, Spanish, French, German, and Turkish.
 
+**Play it live: https://hosca.com/wordfind/**
+
 ## Run
 
 ```bash
