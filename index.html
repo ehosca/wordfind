@@ -27,26 +27,12 @@
         </button>
       </header>
       <main class="play">
-        <aside class="words">
-          <h2 id="find-heading"><span id="list-theme">Find</span><span id="list-count" class="count"></span></h2>
-          <ul id="wordlist"></ul>
-          <div id="status" class="status" aria-live="polite"></div>
-        </aside>
         <div class="board-stack">
           <div class="board-toolbar">
             <div class="controls">
               <label class="control">
                 <span id="label-lang">Language</span>
                 <select id="lang"></select>
-              </label>
-              <label class="control">
-                <span id="label-size">Size</span>
-                <select id="size">
-                  <option value="10">10</option>
-                  <option value="12" selected>12</option>
-                  <option value="14">14</option>
-                  <option value="16">16</option>
-                </select>
               </label>
               <button id="newgame">New Game</button>
             </div>
@@ -66,6 +52,11 @@
             </div>
           </div>
         </div>
+        <aside class="words">
+          <h2 id="find-heading"><span id="list-theme">Find</span><span id="list-count" class="count"></span></h2>
+          <ul id="wordlist"></ul>
+          <div id="status" class="status" aria-live="polite"></div>
+        </aside>
       </main>
       <footer class="footer">
         <a href="https://hosca.com">hosca.com</a>

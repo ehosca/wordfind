@@ -3,6 +3,7 @@ import { generatePuzzle, type Placement, type Puzzle } from './grid';
 import { STRINGS, type UIStrings } from './i18n';
 
 const TARGET_WORD_COUNT = 8;
+const GRID_SIZE = 10;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // Soft, muted palette — each found word gets the next colour. Kept dark
@@ -29,7 +30,6 @@ const $grid = document.getElementById('grid') as HTMLDivElement;
 const $lines = document.getElementById('lines') as unknown as SVGSVGElement;
 const $list = document.getElementById('wordlist') as HTMLUListElement;
 const $lang = document.getElementById('lang') as HTMLSelectElement;
-const $size = document.getElementById('size') as HTMLSelectElement;
 const $newgame = document.getElementById('newgame') as HTMLButtonElement;
 const $status = document.getElementById('status') as HTMLDivElement;
 const $board = document.querySelector('.board') as HTMLDivElement;
@@ -38,7 +38,6 @@ const $tagline = document.getElementById('tagline') as HTMLParagraphElement;
 const $listTheme = document.getElementById('list-theme') as HTMLSpanElement;
 const $listCount = document.getElementById('list-count') as HTMLSpanElement;
 const $labelLang = document.getElementById('label-lang') as HTMLSpanElement;
-const $labelSize = document.getElementById('label-size') as HTMLSpanElement;
 const $winOverlay = document.getElementById('win-overlay') as HTMLDivElement;
 const $winTitle = document.getElementById('win-title') as HTMLDivElement;
 const $winTime = document.getElementById('win-time') as HTMLDivElement;
@@ -58,6 +57,9 @@ interface State {
   selecting: Cell[] | null;
   selectGroup: SVGGElement | null;
   selEls: HTMLDivElement[];
+  peeking: Cell[] | null;
+  peekGroup: SVGGElement | null;
+  peekEls: HTMLDivElement[];
   colorIndex: number;
 }
 
@@ -111,7 +113,6 @@ function applyI18n(code: string) {
   $tagline.textContent = strings.tagline;
   $listTheme.textContent = strings.find;
   $labelLang.textContent = strings.language;
-  $labelSize.textContent = strings.size;
   $newgame.textContent = strings.newGame;
   $playAgain.textContent = strings.playAgain;
   const theme = (document.documentElement.dataset.theme as Theme) ?? 'light';
@@ -131,14 +132,13 @@ function populateLanguages() {
 
 function newGame() {
   const lang = LANGUAGES.find(l => l.code === $lang.value) ?? LANGUAGES[0]!;
-  const size = parseInt($size.value, 10);
   const { theme, words } = pickPool(lang);
 
-  const candidates = words.filter(w => Array.from(w).length <= size);
+  const candidates = words.filter(w => Array.from(w).length <= GRID_SIZE);
   shuffle(candidates);
   const chosen = candidates.slice(0, TARGET_WORD_COUNT);
 
-  const puzzle = generatePuzzle(size, chosen, lang.alphabet);
+  const puzzle = generatePuzzle(GRID_SIZE, chosen, lang.alphabet);
   renderBoard(puzzle, lang, theme);
   revealBoard(puzzle, lang);
 }
@@ -213,6 +213,8 @@ function revealBoard(puzzle: Puzzle, lang: LanguagePack) {
 function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
   $grid.style.gridTemplateColumns = `repeat(${puzzle.size}, 1fr)`;
   $grid.style.gridTemplateRows = `repeat(${puzzle.size}, 1fr)`;
+  // Cell font-size scales off board width / column count (see .cell in CSS).
+  $grid.style.setProperty('--cols', String(puzzle.size));
   $grid.innerHTML = '';
   $lines.innerHTML = '';
   $board.classList.remove('celebrating');
@@ -272,6 +274,9 @@ function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
     selecting: null,
     selectGroup: null,
     selEls: [],
+    peeking: null,
+    peekGroup: null,
+    peekEls: [],
     colorIndex: 0
   };
 }
@@ -327,7 +332,7 @@ function dotRadius(): number {
 
 function buildPathGroup(
   cells: Cell[],
-  variant: 'selecting' | 'found',
+  variant: 'selecting' | 'found' | 'peeking',
   color?: string
 ): SVGGElement {
   const g = document.createElementNS(SVG_NS, 'g') as SVGGElement;
@@ -383,6 +388,25 @@ function paintSelection(cells: Cell[]) {
   state.selectGroup = g;
 }
 
+// Press-and-hold a word in the list to outline it on the board. Purely a
+// hint — nothing is marked found, and it disappears on release.
+function paintPeek(cells: Cell[] | null) {
+  if (!state) return;
+  if (state.peekGroup) {
+    state.peekGroup.remove();
+    state.peekGroup = null;
+  }
+  for (const el of state.peekEls) el.classList.remove('in-peek');
+  state.peekEls = [];
+  state.peeking = cells;
+  if (!cells) return;
+  const g = buildPathGroup(cells, 'peeking');
+  $lines.appendChild(g);
+  state.peekGroup = g;
+  state.peekEls = cells.map(([r, c]) => state!.cellEls[r]![c]!);
+  for (const el of state.peekEls) el.classList.add('in-peek');
+}
+
 function redrawLines() {
   if (!state) return;
   for (const fg of state.foundGroups) {
@@ -391,6 +415,7 @@ function redrawLines() {
     $lines.appendChild(fg.group);
   }
   if (state.selecting) paintSelection(state.selecting);
+  if (state.peeking) paintPeek(state.peeking);
 }
 
 // ---------- match logic ----------
@@ -534,6 +559,31 @@ function attachPointerHandlers() {
   $grid.addEventListener('pointercancel', onPointerUp);
 }
 
+// Peek: pointer capture on the <li> keeps the release ours even if the
+// finger slides off the pill, and stops the drag from reaching the grid.
+function attachPeekHandlers() {
+  $list.addEventListener('pointerdown', e => {
+    if (!state) return;
+    const li = (e.target as Element).closest('li[data-word]') as HTMLElement | null;
+    if (!li || li.classList.contains('found')) return;
+    const placement = state.puzzle.placements.find(p => p.word === li.dataset.word);
+    if (!placement) return;
+    try { li.setPointerCapture(e.pointerId); } catch { /* capture is best-effort */ }
+    li.classList.add('peeking');
+    paintPeek(placement.cells);
+    e.preventDefault();
+  });
+
+  const endPeek = () => {
+    for (const li of $list.querySelectorAll('li.peeking')) li.classList.remove('peeking');
+    if (state?.peeking) paintPeek(null);
+  };
+  document.addEventListener('pointerup', endPeek);
+  document.addEventListener('pointercancel', endPeek);
+  // A long press on touch would otherwise pop the context menu mid-hint.
+  $list.addEventListener('contextmenu', e => e.preventDefault());
+}
+
 function onPointerDown(e: PointerEvent) {
   if (!state) return;
   const cell = cellAt(e.clientX, e.clientY);
@@ -603,9 +653,8 @@ populateLanguages();
 const savedLang = localStorage.getItem(LANG_KEY);
 if (savedLang && LANGUAGES.some(l => l.code === savedLang)) $lang.value = savedLang;
 applyI18n($lang.value);
-// Default to a 10-grid on phones; 12 looks cramped under ~720px.
-if (window.matchMedia('(max-width: 720px)').matches) $size.value = '10';
 attachPointerHandlers();
+attachPeekHandlers();
 window.addEventListener('resize', redrawLines);
 $newgame.addEventListener('click', newGame);
 $playAgain.addEventListener('click', newGame);
@@ -614,5 +663,4 @@ $lang.addEventListener('change', () => {
   applyI18n($lang.value);
   newGame();
 });
-$size.addEventListener('change', newGame);
 newGame();

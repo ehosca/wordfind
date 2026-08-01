@@ -6,7 +6,6 @@ export interface UIStrings {
   tagline: string;
   find: string;
   language: string;
-  size: string;
   newGame: string;
   words: string;
   allFound: string;
@@ -22,7 +21,6 @@ export const STRINGS: Record<string, UIStrings> = {
     tagline: 'find the hidden words',
     find: 'Find',
     language: 'Language',
-    size: 'Size',
     newGame: 'New Game',
     words: 'words',
     allFound: 'All words found in {time}!',
@@ -41,7 +39,6 @@ export const STRINGS: Record<string, UIStrings> = {
     tagline: 'encuentra las palabras ocultas',
     find: 'Encuentra',
     language: 'Idioma',
-    size: 'Tamaño',
     newGame: 'Nueva partida',
     words: 'palabras',
     allFound: '¡Todas las palabras encontradas en {time}!',
@@ -60,7 +57,6 @@ export const STRINGS: Record<string, UIStrings> = {
     tagline: 'trouvez les mots cachés',
     find: 'À trouver',
     language: 'Langue',
-    size: 'Taille',
     newGame: 'Nouvelle partie',
     words: 'mots',
     allFound: 'Tous les mots trouvés en {time} !',
@@ -79,7 +75,6 @@ export const STRINGS: Record<string, UIStrings> = {
     tagline: 'finde die versteckten Wörter',
     find: 'Finden',
     language: 'Sprache',
-    size: 'Größe',
     newGame: 'Neues Spiel',
     words: 'Wörter',
     allFound: 'Alle Wörter in {time} gefunden!',
@@ -98,7 +93,6 @@ export const STRINGS: Record<string, UIStrings> = {
     tagline: 'gizli kelimeleri bul',
     find: 'Bul',
     language: 'Dil',
-    size: 'Boyut',
     newGame: 'Yeni Oyun',
     words: 'kelime',
     allFound: 'Tüm kelimeler {time} içinde bulundu!',

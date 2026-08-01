@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #f6f4ee;
   --panel: #ffffff;
   --grid-line: #e2dfd6;
@@ -57,19 +57,28 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
+/* Portrait-only shell: one phone-shaped column, centred at any viewport
+   width. Everything below assumes this single-column stack â€” board on
+   top, word list underneath. */
 #app {
   min-height: 100dvh;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  padding: 24px;
-  padding-top: max(24px, env(safe-area-inset-top));
-  padding-right: max(24px, env(safe-area-inset-right));
-  padding-bottom: max(24px, env(safe-area-inset-bottom));
-  padding-left: max(24px, env(safe-area-inset-left));
-  gap: 24px;
+  /* `safe` so a column taller than the viewport still starts at the top
+     instead of overflowing off both edges. */
+  justify-content: safe center;
+  padding: 20px;
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-right: max(20px, env(safe-area-inset-right));
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  padding-left: max(20px, env(safe-area-inset-left));
+  gap: 16px;
 }
 
-/* ── Header ───────────────────────────────────────────── */
+/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .topbar {
   position: relative;
@@ -203,27 +212,25 @@ button:active {
   box-shadow: 0 1px 4px var(--accent-glow-soft);
 }
 
-/* ── Play area ────────────────────────────────────────── */
+/* â”€â”€ Play area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .play {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 24px;
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   min-height: 0;
 }
 
-/* Board column: a vertical stack containing the toolbar (controls left,
-   timer right) and the board itself. The stack is what carries the
-   board's max-width and centering, so the toolbar always aligns with
-   the board's left and right edges. */
+/* Board column: toolbar (controls left, timer right) above the board.
+   The toolbar spans the full column so the controls never wrap; the
+   board is capped by --board-cap so the square never pushes the word
+   list off-screen on short windows. On phone-width viewports the cap is
+   larger than the column, so the board simply fills the width. */
 .board-stack {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: min(70vh, 640px);
-  margin: 0 auto;
-  gap: 12px;
+  gap: 10px;
   min-height: 0;
 }
 
@@ -237,7 +244,10 @@ button:active {
 .board {
   position: relative;
   width: 100%;
+  max-width: min(100%, var(--board-cap, 55vh));
+  margin: 0 auto;
   aspect-ratio: 1;
+  container-type: inline-size;
   background: var(--panel);
   border-radius: var(--radius);
   padding: 8px;
@@ -268,9 +278,14 @@ button:active {
 
 .lines .selecting line   { stroke: var(--select-dot); }
 .lines .selecting circle { stroke: var(--accent); stroke-width: 2; fill: var(--select-dot); }
+
+/* Peek (press-and-hold hint): hollow rings on a translucent trail, so it
+   reads as a temporary outline rather than a found word. */
+.lines .peeking line   { stroke: var(--accent-glow); }
+.lines .peeking circle { stroke: var(--accent); stroke-width: 2; fill: none; }
 /* .found colours are set inline per-group from JS */
 
-/* ── Cells ────────────────────────────────────────────── */
+/* â”€â”€ Cells â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .cell {
   display: grid;
@@ -278,7 +293,9 @@ button:active {
   font-family: "Inter", "Segoe UI Variable Display", "Segoe UI", -apple-system,
     BlinkMacSystemFont, system-ui, sans-serif;
   font-weight: 500;
-  font-size: clamp(14px, 2.7vw, 26px);
+  /* Scale letters off the board width and column count rather than the
+     viewport â€” the board no longer tracks viewport width. */
+  font-size: clamp(12px, calc(52cqw / var(--cols, 12)), 28px);
   line-height: 1;
   letter-spacing: 0.04em;
   color: var(--text);
@@ -314,6 +331,8 @@ button:active {
 
 .cell.in-sel { transform: scale(1.18); }
 
+.cell.in-peek { color: var(--accent); }
+
 .cell.flash {
   animation: flash 400ms ease-out;
 }
@@ -335,29 +354,30 @@ button:active {
   80% { transform: translateX(2px); }
 }
 
-/* ── Word list ────────────────────────────────────────── */
+/* â”€â”€ Word list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .words {
   background: var(--panel);
   border: 1px solid var(--grid-line);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   box-shadow: 0 1px 3px var(--shadow-soft), 0 4px 16px var(--shadow-mid);
-  align-self: start;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .words h2 {
-  margin: 0 0 10px;
-  font-size: 12px;
+  margin: 0 0 2px;
+  font-size: 11px;
   letter-spacing: 2.5px;
   color: var(--text-dim);
   text-transform: uppercase;
   font-weight: 600;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: baseline;
   gap: 10px;
 }
@@ -367,37 +387,57 @@ button:active {
   letter-spacing: 1px;
 }
 
+/* Pills, wrapping across the full column width. */
 #wordlist {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 17px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 8px;
+  font-size: clamp(13px, 3.6vw, 15px);
 }
 
 #wordlist li {
-  padding: 5px 10px;
-  border-radius: 6px;
+  padding: 6px 13px;
+  border: 1px solid var(--grid-line);
+  border-radius: 999px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  transition: opacity 350ms ease, color 350ms ease;
+  gap: 6px;
+  transition: opacity 350ms ease, color 350ms ease, border-color 150ms ease,
+    transform 100ms ease;
   font-weight: 500;
+  /* Press-and-hold peeks the word on the board — own the gesture so the
+     browser doesn't turn it into a scroll or a text selection. */
+  cursor: pointer;
+  touch-action: none;
 }
 
+#wordlist li:not(.found).peeking {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-glow-soft);
+  transform: scale(0.96);
+}
+
+#wordlist li.found { cursor: default; }
+
 #wordlist li .dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  border: 2px solid var(--grid-line);
+  border: 1.5px solid var(--grid-line);
   flex-shrink: 0;
   transition: background 350ms ease, border-color 350ms ease, transform 350ms ease;
 }
 
 #wordlist li.found {
   opacity: 0.65;
+  border-color: transparent;
+  background: var(--found-tint, transparent);
 }
 
 #wordlist li.found .word-text {
@@ -410,22 +450,19 @@ button:active {
   transform: scale(1.15);
 }
 
-/* ── Status / win ─────────────────────────────────────── */
+/* â”€â”€ Status / win â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
+/* The win overlay carries the visible result; #status stays in the DOM
+   purely as the aria-live announcer. */
 .status {
-  margin-top: auto;
-  padding-top: 10px;
-  font-size: 11px;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-}
-
-.status.win {
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 1.5px;
-  animation: bounceIn 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 @keyframes bounceIn {
@@ -437,7 +474,7 @@ button:active {
   animation: board-glow 1s ease;
 }
 
-/* ── Win overlay ──────────────────────────────────────── */
+/* â”€â”€ Win overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .win-overlay {
   position: absolute;
@@ -506,7 +543,7 @@ button:active {
   100% { box-shadow: 0 1px 3px var(--shadow-soft), 0 4px 16px var(--shadow-mid); }
 }
 
-/* ── Footer ───────────────────────────────────────────── */
+/* â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .footer {
   text-align: center;
@@ -528,113 +565,36 @@ button:active {
   color: var(--text);
   border-bottom-color: currentColor;
 }
+
 /* ────────────────────────────────────────────────────────
- * Responsive system: three layouts driven by viewport size.
+ * Portrait layout only. The shell above is a fixed-width
+ * phone-shaped column at every viewport size, so the media
+ * queries below tune density inside that column rather than
+ * switching layouts:
  *
- *   Layout A — "Comfortable" (default, defined above)
- *     Wide AND tall enough for sidebar + board side-by-side.
- *     Targets: desktop, tablet landscape.
- *
- *   Layout B — "Tall" (this @media)
- *     Narrow OR short. Stack: header → board → word pills → footer.
- *     Pills scale via clamp() so tablet portrait gets bigger pills
- *     than phone portrait without separate breakpoints.
- *     Targets: phone portrait, tablet portrait, narrow desktop.
- *
- *   Layout C — "Short landscape" (after this, more specific)
- *     Height < 500px in landscape — typically phone landscape.
- *     Single-line header, side-by-side board + compact word column,
- *     footer hidden to reclaim vertical space.
+ *   < 480px  — real phones: drop the select label and tighten
+ *              padding so the board claims the width.
+ *   < 620px height — short windows: shrink the header chrome
+ *              and hide the footer to keep the board square.
+ *   < 500px height — phone landscape: collapse the chrome far
+ *              enough that board + words still fit unscrolled.
  * ──────────────────────────────────────────────────────── */
 
-/* ── Layout B — Tall / narrow ─────────────────────────── */
-
-@media (max-width: 899px), (max-height: 599px) {
-  #app { padding: 16px; gap: 14px; }
-
-  .topbar h1 { font-size: clamp(22px, 4.5vw, 28px); letter-spacing: 4px; }
-  .tagline { font-size: 12px; letter-spacing: 1px; }
-  .timer { font-size: 18px; }
-
-  .play {
-    grid-template-columns: 1fr;
-    grid-auto-rows: min-content;
-    align-content: start;
-    gap: 12px;
-  }
-
-  .play .board-stack { order: 1; }
-  .play .words       { order: 2; }
-
-  .board-stack {
-    max-width: min(75vh, 100%);
-    gap: 10px;
-  }
-
-  .board {
-    padding: 6px;
-    box-shadow: 0 1px 2px var(--shadow-soft), 0 2px 8px var(--shadow-mid);
-  }
-  .lines { inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); }
-
-  .cell { font-size: clamp(14px, 5vw, 22px); }
-
-  .words {
-    padding: clamp(10px, 1.6vw, 14px) clamp(12px, 2vw, 16px);
-    gap: 6px;
-    align-self: auto;
-  }
-  .words h2 {
-    display: flex;
-    justify-content: center;
-    font-size: 11px;
-    margin: 2px 0 2px;
-  }
-
-  /* Pills: fluid sizing so tablet portrait gets noticeably larger
-     pills than phone portrait, no extra breakpoint needed. */
-  #wordlist {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 6px clamp(6px, 1vw, 10px);
-    font-size: clamp(13px, 1.7vw, 15px);
-  }
-  #wordlist li {
-    padding: clamp(5px, 0.8vw, 7px) clamp(11px, 1.6vw, 14px);
-    border: 1px solid var(--grid-line);
-    border-radius: 999px;
-    gap: 6px;
-  }
-  #wordlist li .dot {
-    width: 6px;
-    height: 6px;
-    border-width: 1.5px;
-  }
-  #wordlist li.found {
-    border-color: transparent;
-    background: var(--found-tint, transparent);
-  }
-
-  .status { display: none; }
-  .footer { padding: 2px 0; }
-}
-
-/* Phone-only refinement: tighten padding/gap on very narrow viewports
-   so the board can claim every available pixel of width. Also drop the
-   "LANGUAGE" / "SIZE" labels — at < 480px they push the controls onto a
-   second row and steal vertical space; the dropdowns are self-evident
-   after one interaction. Size picker is removed entirely on phones —
-   the board is fixed at 10×10 (set in JS). */
 @media (max-width: 480px) {
   #app { padding: 10px; gap: 10px; }
+  #app {
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-right: max(10px, env(safe-area-inset-right));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding-left: max(10px, env(safe-area-inset-left));
+  }
+
   .topbar h1 { font-size: 22px; letter-spacing: 3px; }
   .tagline { font-size: 11px; }
   .theme-toggle { width: 34px; height: 34px; }
   .theme-toggle svg { width: 16px; height: 16px; }
 
   .control span { display: none; }
-  .control:has(#size) { display: none; }
   select {
     margin-top: 0;
     padding: 7px 10px;
@@ -645,108 +605,53 @@ button:active {
     font-size: 12px;
   }
   .timer { font-size: 18px; }
-}
-
-/* ── Layout C — Short landscape (phone landscape) ─────── */
-
-@media (max-height: 499px) and (orientation: landscape) {
-  #app { padding: 8px; gap: 6px; }
-
-  /* Tiny centered title — tagline gone, controls/timer live in the
-     board-toolbar below. */
-  .topbar { gap: 0; }
-  .topbar h1 {
-    font-size: 16px;
-    letter-spacing: 2px;
-  }
-  .tagline { display: none; }
-  .theme-toggle { width: 28px; height: 28px; top: -2px; }
-  .theme-toggle svg { width: 14px; height: 14px; }
-
-  /* Compact toolbar: hide select labels, shrink padding. Still
-     space-between so controls stay left and timer stays right. */
-  .board-toolbar { gap: 8px; }
-  .controls { gap: 8px; }
-  .control span { display: none; }
-  .control:has(#size) { display: none; }
-  select {
-    margin-top: 0;
-    padding: 5px 10px;
-    font-size: 12px;
-  }
-  button {
-    padding: 6px 14px;
-    font-size: 11px;
-    letter-spacing: 1px;
-    box-shadow: 0 1px 4px var(--accent-glow-soft);
-  }
-  .timer {
-    font-size: 16px;
-    letter-spacing: 1.5px;
-  }
-
-  /* Side-by-side: compact word column + board-stack taking the rest. */
-  .play {
-    grid-template-columns: 130px 1fr;
-    grid-template-rows: 1fr;
-    grid-auto-rows: unset;
-    align-content: stretch;
-    gap: 10px;
-  }
-  .play .board-stack { order: unset; }
-  .play .words       { order: unset; }
-
-  .board-stack {
-    max-width: min(85vh, 100%);
-    gap: 6px;
-    height: 100%;
-  }
-
-  .words {
-    padding: 8px 10px;
-    gap: 4px;
-    overflow-y: auto;
-    align-self: auto;
-  }
-  .words h2 {
-    display: flex;
-    font-size: 9px;
-    letter-spacing: 1px;
-    margin: 0 0 2px;
-  }
-
-  .win-time { font-size: 36px; }
-
-  #wordlist {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    gap: 1px;
-    font-size: 11px;
-  }
-  #wordlist li {
-    padding: 3px 6px;
-    border: none;
-    background: none;
-    border-radius: 4px;
-    gap: 6px;
-  }
-  #wordlist li .dot {
-    width: 5px;
-    height: 5px;
-    border-width: 1.5px;
-  }
-  #wordlist li.found {
-    background: var(--found-tint, transparent);
-    border: none;
-  }
-
-  .status { display: none; }
-  .footer { display: none; }
 
   .board {
-    padding: 5px;
+    padding: 6px;
+    box-shadow: 0 1px 2px var(--shadow-soft), 0 2px 8px var(--shadow-mid);
   }
+  .lines { inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); }
+
+  .words { padding: 10px 12px; }
+}
+
+@media (max-height: 620px) {
+  #app { gap: 10px; --board-cap: 48vh; }
+  .topbar h1 { font-size: 20px; letter-spacing: 3px; }
+  .tagline { display: none; }
+  .theme-toggle { width: 32px; height: 32px; top: -2px; }
+  .theme-toggle svg { width: 15px; height: 15px; }
+  .timer { font-size: 17px; }
+  .play { gap: 10px; }
+  .board-stack { gap: 8px; }
+  .win-time { font-size: 40px; }
+  .footer { display: none; }
+}
+
+/* Very short windows (phone held landscape). Portrait stack is kept —
+   the chrome just collapses so board + words still fit without scroll. */
+@media (max-height: 500px) {
+  #app { padding: 8px; gap: 6px; --board-cap: 44vh; }
+  #app {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-right: max(8px, env(safe-area-inset-right));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding-left: max(8px, env(safe-area-inset-left));
+  }
+  .topbar h1 { font-size: 17px; letter-spacing: 2px; }
+  .theme-toggle { width: 28px; height: 28px; }
+  .theme-toggle svg { width: 14px; height: 14px; }
+  .timer { font-size: 15px; }
+  .control span { display: none; }
+  select { margin-top: 0; padding: 5px 10px; font-size: 12px; }
+  button { padding: 6px 14px; font-size: 11px; letter-spacing: 1px; }
+  .play { gap: 6px; }
+  .board-stack { gap: 6px; }
+  .board { padding: 5px; }
   .lines { inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); }
-  .cell { font-size: clamp(11px, 2.4vh, 18px); }
+  .words { padding: 6px 8px; gap: 2px; }
+  .words h2 { font-size: 9px; letter-spacing: 1.5px; }
+  #wordlist { gap: 4px 6px; font-size: 12px; }
+  #wordlist li { padding: 3px 9px; }
+  .win-time { font-size: 32px; }
 }

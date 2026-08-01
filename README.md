@@ -24,6 +24,8 @@ Open http://localhost:5173.
 
 Vanilla TypeScript + Vite. No framework. The board is plain DOM; selection and "found" markers are rendered as an SVG overlay.
 
+The UI is portrait-only at every viewport size: a single phone-shaped column, centred, with the board on top and the word list beneath it. Media queries tune density inside that column rather than switching layouts.
+
 ## Layout
 
 ```
@@ -31,7 +33,7 @@ src/
   main.ts     # bootstrap, render, pointer + selection logic
   grid.ts     # generator: places words in 8 directions, fills noise letters
   words.ts    # multilingual themed word pools
-  styles.css  # palette, board, responsive layout
+  styles.css  # palette, board, portrait column
 ```
 
 ## License
