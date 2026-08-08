@@ -250,25 +250,41 @@ button:active {
   container-type: inline-size;
   background: var(--panel);
   border-radius: var(--radius);
-  padding: 8px;
+  /* The padding still sizes the container query the cell font keys off, and
+     both layers inset by the same variable — see .grid. */
+  --board-pad: 8px;
+  padding: var(--board-pad);
   box-shadow: 0 1px 3px var(--shadow-soft), 0 4px 16px var(--shadow-mid);
 }
 
+/* Both layers are pinned to the board with `inset` rather than sized in
+   percentages. The board's height comes from aspect-ratio, and WebKit
+   resolves a child's `height: 100%` against the border box in that case, not
+   the content box — which made the grid 2 * --board-pad too tall and pushed
+   every row down by half of that. Insetting is exact in every engine. */
 .grid {
   display: grid;
   background: transparent;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  left: var(--board-pad);
+  right: var(--board-pad);
+  /* alignGrid() measures where the letters actually sit and sets --grid-nudge
+     to centre them; see main.ts. Both edges carry it, so the box moves without
+     changing height. */
+  top: calc(var(--board-pad) + var(--grid-nudge, 0px));
+  bottom: calc(var(--board-pad) - var(--grid-nudge, 0px));
   touch-action: none;
-  position: relative;
   z-index: 2;
 }
 
+/* An <svg> has an intrinsic 300x150, so inset alone will not stretch it —
+   it needs the size spelled out. Percentages on an absolutely positioned box
+   resolve against the board's padding box, hence the doubled pad. */
 .lines {
   position: absolute;
-  inset: 8px;
-  width: calc(100% - 16px);
-  height: calc(100% - 16px);
+  inset: var(--board-pad);
+  width: calc(100% - 2 * var(--board-pad));
+  height: calc(100% - 2 * var(--board-pad));
   pointer-events: none;
   overflow: visible;
   z-index: 1;
@@ -319,12 +335,22 @@ button:active {
 .grid.revealing { pointer-events: none; }
 .grid.revealing .glyph { will-change: transform, opacity; }
 
-@supports not (height: 1cap) {
-  .cell .glyph {
-    height: auto;
-    line-height: 1;
-    transform: translateY(-0.11em);
-  }
+/* Hidden twin of a cell, used by alignGrid() to measure where the baseline
+   really falls inside the glyph box. Absolute, so it is out of flow and never
+   becomes an 11th column, but still inside .grid to inherit --cols (and .board
+   for the container query the font-size depends on). */
+.metrics-probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.metrics-probe i {
+  display: inline-block;
+  width: 0;
+  height: 0;
 }
 
 .cell.in-found { color: #ffffff; }
@@ -607,10 +633,9 @@ button:active {
   .timer { font-size: 18px; }
 
   .board {
-    padding: 6px;
+    --board-pad: 6px;
     box-shadow: 0 1px 2px var(--shadow-soft), 0 2px 8px var(--shadow-mid);
   }
-  .lines { inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); }
 
   .words { padding: 10px 12px; }
 }
@@ -647,8 +672,7 @@ button:active {
   button { padding: 6px 14px; font-size: 11px; letter-spacing: 1px; }
   .play { gap: 6px; }
   .board-stack { gap: 6px; }
-  .board { padding: 5px; }
-  .lines { inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); }
+  .board { --board-pad: 5px; }
   .words { padding: 6px 8px; gap: 2px; }
   .words h2 { font-size: 9px; letter-spacing: 1.5px; }
   #wordlist { gap: 4px 6px; font-size: 12px; }

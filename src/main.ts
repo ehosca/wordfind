@@ -279,6 +279,8 @@ function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
     peekEls: [],
     colorIndex: 0
   };
+
+  alignGrid();
 }
 
 function shuffle<T>(arr: T[]): void {
@@ -312,6 +314,74 @@ function lineCells(a: Cell, b: Cell): Cell[] | null {
   const out: Cell[] = [];
   for (let i = 0; i <= steps; i++) out.push([a[0] + sr * i, a[1] + sc * i]);
   return out;
+}
+
+// Vertical centring of the letters, measured rather than assumed.
+//
+// .glyph is a 1cap-tall inline-block (see CSS), which puts the cap box and
+// the box the cell centres in the same place — but only in engines that
+// honour cap units in line-height. WebKit is not guaranteed to, so instead
+// of trusting it, probe where the baseline actually lands inside the glyph
+// box and correct whatever is left over.
+//
+// On top of that, the visible gap above the first row and below the last one
+// depends on which glyphs landed there: a cedilla (Ş, Ç) dips below the
+// baseline and eats the bottom gap, a dotted or accented cap (İ, Ü, Ö) rises
+// past the caps and eats the top one.
+//
+// Both corrections are identical for every cell, so they ride on the grid as
+// a single offset and nothing inside the grid moves relative to anything else.
+let inkCtx: CanvasRenderingContext2D | null | undefined;
+let $probe: HTMLElement | null = null;
+
+function metricsProbe(): HTMLElement {
+  if (!$probe || !$probe.isConnected) {
+    $probe = document.createElement('div');
+    $probe.className = 'cell metrics-probe';
+    $probe.setAttribute('aria-hidden', 'true');
+    // The empty <i> has no line boxes of its own, so an inline-block of zero
+    // height reports its box on the text baseline — in every engine.
+    $probe.innerHTML = '<span class="glyph">H<i></i></span>';
+    $grid.appendChild($probe);
+  }
+  return $probe;
+}
+
+function alignGrid(): void {
+  if (!state) return;
+  const { size, cells } = state.puzzle;
+
+  const probe = metricsProbe();
+  const glyph = probe.querySelector('.glyph') as HTMLElement;
+  const box = glyph.getBoundingClientRect();
+  const baselineOffset = probe.querySelector('i')!.getBoundingClientRect().top - box.top;
+  if (!box.height) return;
+
+  if (inkCtx === undefined) inkCtx = document.createElement('canvas').getContext('2d');
+  if (!inkCtx) return;
+
+  const cs = getComputedStyle(glyph);
+  inkCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+
+  const capHeight = CSS.supports('height', '1cap')
+    ? box.height
+    : inkCtx.measureText('H').actualBoundingBoxAscent;
+
+  // Centre the cap box within the glyph box the cell already centres.
+  let nudge = (box.height + capHeight) / 2 - baselineOffset;
+
+  // Then even out the ink that pokes past the cap box on the outer rows.
+  let overshoot = 0;  // ink rising above the cap box on the first row
+  let descent = 0;    // ink dropping below the baseline on the last row
+  for (const ch of cells[0]!) {
+    overshoot = Math.max(overshoot, inkCtx.measureText(ch).actualBoundingBoxAscent - capHeight);
+  }
+  for (const ch of cells[size - 1]!) {
+    descent = Math.max(descent, inkCtx.measureText(ch).actualBoundingBoxDescent);
+  }
+  nudge -= (descent - overshoot) / 2;
+
+  $grid.style.setProperty('--grid-nudge', `${nudge.toFixed(2)}px`);
 }
 
 function cellCenter(r: number, c: number): { x: number; y: number } {
@@ -655,7 +725,13 @@ if (savedLang && LANGUAGES.some(l => l.code === savedLang)) $lang.value = savedL
 applyI18n($lang.value);
 attachPointerHandlers();
 attachPeekHandlers();
-window.addEventListener('resize', redrawLines);
+window.addEventListener('resize', () => {
+  // Font size tracks board width, so the ink offsets scale with it.
+  alignGrid();
+  redrawLines();
+});
+// Fallback metrics until Inter lands; remeasure once it has.
+document.fonts?.ready.then(alignGrid);
 $newgame.addEventListener('click', newGame);
 $playAgain.addEventListener('click', newGame);
 $lang.addEventListener('change', () => {
