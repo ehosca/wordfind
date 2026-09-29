@@ -275,7 +275,9 @@ function placeRealWords(
   for (const word of sorted) {
     const letters = splitGraphemes(word);
     if (letters.length > size) continue;
-    const placement = tryPlace(cells, size, letters);
+    // requireNewCells=1: a word laid entirely over existing letters (BERRY
+    // inside STRAWBERRY) is a free find and fakes a "crossing" in scoreLayout.
+    const placement = tryPlace(cells, size, letters, MAX_TRIES, 1);
     if (placement) placements.push(placement);
   }
   return { cells, placements };

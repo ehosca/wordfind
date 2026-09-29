@@ -136,7 +136,7 @@ function newGame() {
 
   const candidates = words.filter(w => Array.from(w).length <= GRID_SIZE);
   shuffle(candidates);
-  const chosen = candidates.slice(0, TARGET_WORD_COUNT);
+  const chosen = pickWords(candidates, TARGET_WORD_COUNT);
 
   const puzzle = generatePuzzle(GRID_SIZE, chosen, lang.alphabet);
   renderBoard(puzzle, lang, theme);
@@ -281,6 +281,23 @@ function renderBoard(puzzle: Puzzle, lang: LanguagePack, theme: string) {
   };
 
   alignGrid();
+}
+
+// Take up to `count` words, skipping any that contains (or is contained by)
+// an already-chosen word, forwards or reversed. With BERRY and STRAWBERRY in
+// the same puzzle, BERRY is always readable inside STRAWBERRY, so finding one
+// can accidentally satisfy the other.
+function pickWords(candidates: string[], count: number): string[] {
+  const chosen: string[] = [];
+  for (const w of candidates) {
+    if (chosen.length >= count) break;
+    const rev = Array.from(w).reverse().join('');
+    const clash = chosen.some(c =>
+      c.includes(w) || c.includes(rev) || w.includes(c) || rev.includes(c)
+    );
+    if (!clash) chosen.push(w);
+  }
+  return chosen;
 }
 
 function shuffle<T>(arr: T[]): void {
@@ -690,6 +707,26 @@ function onPointerUp(_e: PointerEvent) {
   }
 }
 
+// ---------- storage ----------
+
+// localStorage can throw (Safari private mode, blocked site data, sandboxed
+// iframes). Preferences are nice-to-have, so failures are silently ignored.
+function loadPref(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function savePref(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // storage unavailable; ignore
+  }
+}
+
 // ---------- theme ----------
 
 type Theme = 'light' | 'dark';
@@ -705,22 +742,22 @@ function applyTheme(theme: Theme) {
 }
 
 function initTheme() {
-  const saved = localStorage.getItem(THEME_KEY) as Theme | null;
+  const saved = loadPref(THEME_KEY);
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  applyTheme(saved ?? (prefersDark ? 'dark' : 'light'));
+  applyTheme(saved === 'light' || saved === 'dark' ? saved : prefersDark ? 'dark' : 'light');
 }
 
 $themeToggle.addEventListener('click', () => {
   const next: Theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   applyTheme(next);
-  localStorage.setItem(THEME_KEY, next);
+  savePref(THEME_KEY, next);
 });
 
 // ---------- boot ----------
 
 initTheme();
 populateLanguages();
-const savedLang = localStorage.getItem(LANG_KEY);
+const savedLang = loadPref(LANG_KEY);
 if (savedLang && LANGUAGES.some(l => l.code === savedLang)) $lang.value = savedLang;
 applyI18n($lang.value);
 attachPointerHandlers();
@@ -735,7 +772,7 @@ document.fonts?.ready.then(alignGrid);
 $newgame.addEventListener('click', newGame);
 $playAgain.addEventListener('click', newGame);
 $lang.addEventListener('change', () => {
-  localStorage.setItem(LANG_KEY, $lang.value);
+  savePref(LANG_KEY, $lang.value);
   applyI18n($lang.value);
   newGame();
 });
